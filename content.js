@@ -49,19 +49,83 @@
 
         document.getElementById('aiConfigBtn').onclick = function() { SettingsDialog.show(); };
 
-        // Override Panel.open with server check
+        var heartbeatTimer = null;
+        var wasConnected = false;
+
+        function updateStatusLight(connected) {
+            var btn = document.getElementById('aiConfigBtn');
+            if (btn) {
+                if (connected) {
+                    btn.textContent = '🔗';
+                    btn.title = I18n._lang === 'zh' ? '已连接' : 'Connected';
+                } else {
+                    btn.textContent = '🔌';
+                    btn.title = I18n._lang === 'zh' ? '已断开' : 'Disconnected';
+                }
+            }
+            if (wasConnected && !connected) {
+                SettingsDialog.show();
+                Toast.show(I18n.t('toast.cannotConnect'), 'error');
+            }
+            wasConnected = connected;
+        }
+
+        function heartbeat() {
+            var url = Config.serverUrl;
+            if (!url) { updateStatusLight(false); return; }
+            fetch(url + '/api/ping')
+                .then(function(r) { updateStatusLight(r.ok); })
+                .catch(function() { updateStatusLight(false); });
+        }
+
         var origOpen = Panel.open;
         Panel.open = async function() {
             origOpen.call(Panel);
-            var connected = await _checkServer();
+            heartbeat();
+            heartbeatTimer = setInterval(heartbeat, 5000);
+
+            var connected = false;
+            try {
+                var r = await fetch(Config.serverUrl + '/api/ping');
+                connected = r.ok;
+            } catch (e) {}
+            updateStatusLight(connected);
+
             if (!connected) {
-                SettingsDialog.show();
-                Toast.show(I18n._lang === 'zh' ? '无法连接服务器，请启动 node server.js' : 'Cannot connect. Start node server.js', 'error');
-                return;
+                setTimeout(function() {
+                    fetch(Config.serverUrl + '/api/ping')
+                        .then(function(r) {
+                            if (!r.ok) {
+                                SettingsDialog.show();
+                                Toast.show(I18n.t('toast.cannotConnect'), 'error');
+                            }
+                        })
+                        .catch(function() {
+                            SettingsDialog.show();
+                            Toast.show(I18n.t('toast.cannotConnect'), 'error');
+                        });
+                }, 3000);
+            } else {
+                // Validate work dirs with server
+                try {
+                    var vr = await fetch(Config.serverUrl + '/api/config', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ dirs: Config.workDirs })
+                    });
+                    if (vr.ok) {
+                        var vj = await vr.json();
+                        if (vj.success && vj.dirs) {
+                            Config._data.workDirs = vj.dirs;
+                            await Config.save();
+                        }
+                    }
+                } catch (e) {}
+
+                await FileTree.refresh();
+                await PromptsBar.load();
+                TemplatesBar.render();
             }
-            await FileTree.refresh();
-            await PromptsBar.load();
-            TemplatesBar.render();
         };
 
         var origClose = Panel.close;
@@ -69,17 +133,8 @@
             if (Editor && typeof Editor.hasChanges === 'function' && Editor.hasChanges()) {
                 if (!confirm(I18n.t('toast.unsaved'))) return;
             }
+            clearInterval(heartbeatTimer);
             origClose.call(Panel);
         };
     });
-
-    // Check if server is reachable
-    async function _checkServer() {
-        try {
-            var r = await fetch(Config.serverUrl + '/api/files/list?dir=' + encodeURIComponent(Config.mainDir));
-            return r.ok;
-        } catch (e) {
-            return false;
-        }
-    }
 })();

@@ -23,7 +23,6 @@ const Panel = {
         this.el.id = 'ai-file-panel';
         this.el.innerHTML =
             '<div class="ai-main">' +
-                '<span id="aiStatusLight" style="position:absolute;top:10px;right:50px;width:10px;height:10px;border-radius:50%;background:#dc3545;z-index:10" title="' + (I18n._lang === 'zh' ? '服务器断开' : 'Disconnected') + '"></span>' +
                 '<div class="ai-left">' +
                     '<div class="ai-left-header">' +
                         '<input id="aiSearchFiles" class="ai-search" placeholder="' + I18n.t('file.search') + '">' +
@@ -31,7 +30,7 @@ const Panel = {
                         '<button id="aiSaveBtn" title="' + I18n.t('tooltip.save') + '">' + I18n.t('btn.save') + '</button>' +
                         '<button id="aiNewFileBtn" title="' + I18n.t('tooltip.newFile') + '">' + I18n.t('btn.newFile') + '</button>' +
                         '<button id="aiNewFolderBtn" title="' + I18n.t('tooltip.newFolder') + '">' + I18n.t('btn.newFolder') + '</button>' +
-                        '<button id="aiConfigBtn" title="' + I18n.t('tooltip.config') + '">' + I18n.t('btn.config') + '</button>' +
+                        '<button id="aiConfigBtn" title="' + (I18n._lang === 'zh' ? '已断开' : 'Disconnected') + '" class="ai-status-btn">🔌</button>' +
                     '</div>' +
                     '<div id="aiFileList"></div>' +
                     '<div id="aiSelectedInfo"></div>' +

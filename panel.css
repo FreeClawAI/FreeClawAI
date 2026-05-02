@@ -42,3 +42,4 @@
 .ai-dialog-btns{margin-top:12px;display:flex;gap:6px}
 .ai-dialog-btns button{padding:6px 14px;border:1px solid #ccc;border-radius:4px;background:white;cursor:pointer;font-size:12px}
 .ai-dialog-btns button:hover{background:#f0f0f0}
+.ai-status-btn{background:transparent!important;border:none!important;padding:3px 6px!important;font-size:14px!important}

@@ -1,15 +1,20 @@
-// FreeClaw - Local File Server
+// FreeClaw - Local File Server (zero dependency)
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 const crypto = require('crypto');
 
 const PORT = 8080;
-const WORKSPACE_DIR = path.join(__dirname, 'workspace');
+const documentsDir = path.join(os.homedir(), 'Documents');
+const WORKSPACE_DIR = path.join(
+    fs.existsSync(documentsDir) ? documentsDir : os.homedir(),
+    'FreeClaw'
+);
 if (!fs.existsSync(WORKSPACE_DIR)) fs.mkdirSync(WORKSPACE_DIR, { recursive: true });
 
 function resolvePath(dir, filename) {
-    const workDir = path.resolve(dir || WORKSPACE_DIR);
+    const workDir = dir ? path.resolve(dir) : WORKSPACE_DIR;
     const full = path.resolve(workDir, filename || '');
     if (!full.startsWith(workDir)) throw new Error('Access denied');
     return full;
@@ -18,12 +23,12 @@ function resolvePath(dir, filename) {
 function md5(str) { return crypto.createHash('md5').update(str).digest('hex'); }
 
 function listFiles(dir) {
-    const workDir = path.resolve(dir || WORKSPACE_DIR);
+    const workDir = dir ? path.resolve(dir) : WORKSPACE_DIR;
     if (!fs.existsSync(workDir)) return [];
     const result = [];
     function walk(d, prefix) {
         const items = fs.readdirSync(d, { withFileTypes: true });
-        items.forEach(item => {
+        items.forEach(function(item) {
             if (item.isDirectory()) walk(path.join(d, item.name), prefix + item.name + '/');
             else { const st = fs.statSync(path.join(d, item.name)); result.push({ name: prefix + item.name, size: st.size }); }
         });
@@ -53,7 +58,7 @@ function writeFile(dir, filename, content, options) {
 }
 
 function makeDir(dir, name) {
-    const workDir = path.resolve(dir || WORKSPACE_DIR);
+    const workDir = dir ? path.resolve(dir) : WORKSPACE_DIR;
     const full = path.resolve(workDir, name);
     if (!full.startsWith(workDir)) throw new Error('Access denied');
     if (!fs.existsSync(full)) fs.mkdirSync(full, { recursive: true });
@@ -67,20 +72,39 @@ function deleteFile(dir, filename) {
     return { success: true };
 }
 
-const server = http.createServer((req, res) => {
+const server = http.createServer(function(req, res) {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     if (req.method === 'OPTIONS') { res.writeHead(200); res.end(); return; }
 
-    let body = '';
-    req.on('data', chunk => body += chunk);
-    req.on('end', () => {
+    var body = '';
+    req.on('data', function(chunk) { body += chunk; });
+    req.on('end', function() {
         try {
-            let data = {};
+            var data = {};
             if (body) data = JSON.parse(body);
 
-            if (req.url === '/api/files/list' && req.method === 'GET') {
+            if (req.url === '/api/ping' && req.method === 'GET') {
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ status: 'ok' }));
+            } else if (req.url === '/api/config' && req.method === 'POST') {
+                var dirs = data.dirs || [];
+                var validDirs = [];
+                dirs.forEach(function(d) {
+                    var resolved = path.resolve(d);
+                    try {
+                        if (!fs.existsSync(resolved)) fs.mkdirSync(resolved, { recursive: true });
+                        var testFile = path.join(resolved, '.freeclaw_test');
+                        fs.writeFileSync(testFile, 'test');
+                        fs.unlinkSync(testFile);
+                        validDirs.push(resolved);
+                    } catch (e) { /* Skip invalid */ }
+                });
+                if (!validDirs.length) validDirs.push(WORKSPACE_DIR);
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: true, dirs: validDirs }));
+            } else if (req.url.startsWith('/api/files/list') && req.method === 'GET') {
                 const url = new URL(req.url, 'http://localhost');
                 const dir = url.searchParams.get('dir') || '';
                 const files = listFiles(dir);
@@ -118,4 +142,4 @@ const server = http.createServer((req, res) => {
     });
 });
 
-server.listen(PORT, () => console.log('FreeClaw Server running on http://localhost:' + PORT));
+server.listen(PORT, function() { console.log('FreeClaw Server: http://localhost:' + PORT); });
