@@ -1,0 +1,58 @@
+{
+  "manifest_version": 3,
+  "name": "FreeClaw",
+  "version": "1.0.0",
+  "description": "Code AI, Free Forever. Grab code from AI chats, save locally.",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "permissions": ["storage", "scripting", "activeTab"],
+  "host_permissions": ["http://127.0.0.1:8080/*"],
+  "content_scripts": [{
+    "matches": [
+      "https://chat.deepseek.com/*",
+      "https://chat.openai.com/*",
+      "https://chatgpt.com/*",
+      "https://claude.ai/*",
+      "https://gemini.google.com/*"
+    ],
+    "js": [
+      "lib/beautify.js",
+      "lib/beautify-css.js",
+      "lib/beautify-html.js",
+      "js/core/utils.js",
+      "js/core/db.js",
+      "js/core/config.js",
+      "js/core/i18n.js",
+      "js/sites/adapters.js",
+      "js/services/extractor.js",
+      "js/services/saver.js",
+      "js/services/sender.js",
+      "js/services/formatter.js",
+      "js/ui/dialog.js",
+      "js/ui/toast.js",
+      "js/ui/panel.js",
+      "js/ui/preview.js",
+      "js/ui/editor.js",
+      "js/ui/prompts-bar.js",
+      "js/ui/templates-bar.js",
+      "js/ui/file-tree.js",
+      "js/ui/diff-dialog.js",
+      "js/ui/settings-dialog.js",
+      "js/ui/context-menu.js",
+      "js/input/keyboard.js",
+      "js/input/dnd.js",
+      "content.js"
+    ],
+    "css": ["panel.css"]
+  }],
+  "web_accessible_resources": [{
+    "resources": ["panel.css", "js/*", "lib/*", "server.js"],
+    "matches": ["<all_urls>"]
+  }],
+  "action": {
+    "default_title": "FreeClaw - Code AI, Free Forever"
+  }
+}
