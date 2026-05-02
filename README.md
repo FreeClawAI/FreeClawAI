@@ -16,7 +16,11 @@ Grab code from AI chats, save to your local project instantly. Zero API cost. Ze
 2. Extract to any folder
 3. Open Chrome, go to `chrome://extensions/`, enable **Developer mode**
 4. Click **Load unpacked** → select the extracted folder
-5. Open DeepSeek / ChatGPT / Claude / Gemini
+5. Open any supported AI Chat:
+   - [DeepSeek](https://chat.deepseek.com)
+   - [ChatGPT](https://chatgpt.com)
+   - [Claude](https://claude.ai)
+   - [Gemini](https://gemini.google.com)
 6. Click the 📁 button in the top-right corner
 
 > ✅ No `npm install` | ✅ No `pip install` | ✅ No Docker
