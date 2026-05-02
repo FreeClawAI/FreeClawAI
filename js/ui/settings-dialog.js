@@ -75,7 +75,7 @@ const SettingsDialog = {
         document.getElementById('aiCfgTestConn').onclick = function() { self._testConn(); };
         document.getElementById('aiCfgBrowse').onclick = function() {
             DirPicker.show(Config.mainDir, function(selectedPath) {
-                self._addDirByPath(selectedPath).then(function() {
+                self._addDirByPath(selectedPath, currentUrl).then(function() {
                     self._render(currentUrl);
                 });
             });
@@ -119,12 +119,14 @@ const SettingsDialog = {
         });
     },
 
-    _addDirByPath: async function(newDir) {
-        var url = document.getElementById('aiCfgServer').value.trim() || Config.serverUrl;
+    _addDirByPath: async function(newDir, serverUrl) {
+        var url = serverUrl || Config.serverUrl;
         var status = document.getElementById('aiCfgAddStatus');
         if (!newDir) return;
-        status.textContent = I18n.t('Validating...');
-        status.style.color = '#666';
+        if (status) {
+            status.textContent = I18n.t('Validating...');
+            status.style.color = '#666';
+        }
         try {
             var allDirs = this._dirs.concat([newDir]);
             var r = await fetch(url + '/api/config', {
@@ -136,21 +138,29 @@ const SettingsDialog = {
                 this._dirs = j.dirs;
                 Config._data.workDirs = j.dirs;
                 await Config.save();
-                status.textContent = I18n.t('✅ Added');
-                status.style.color = '#28a745';
+                if (status) {
+                    status.textContent = I18n.t('✅ Added');
+                    status.style.color = '#28a745';
+                }
             } else {
-                status.textContent = I18n.t('❌ Cannot access this directory');
-                status.style.color = '#dc3545';
+                if (status) {
+                    status.textContent = I18n.t('❌ Cannot access this directory');
+                    status.style.color = '#dc3545';
+                }
             }
         } catch (e) {
-            status.textContent = I18n.t('❌ Cannot connect');
-            status.style.color = '#dc3545';
+            if (status) {
+                status.textContent = I18n.t('❌ Cannot connect');
+                status.style.color = '#dc3545';
+            }
         }
     },
 
     _testConn: async function() {
-        var url = document.getElementById('aiCfgServer').value.trim();
+        var url = document.getElementById('aiCfgServer');
         var status = document.getElementById('aiCfgConnStatus');
+        if (!url || !status) return;
+        url = url.value.trim();
         status.textContent = I18n.t('Testing...');
         status.style.color = '#666';
         try {
