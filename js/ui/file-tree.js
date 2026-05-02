@@ -1,64 +1,11 @@
-// FreeClaw - File tree rendering with multi-directory support
+// FreeClaw - File tree UI rendering
 const FileTree = {
-    _aiFiles: [],
-    _workFiles: {},
-    _userFiles: [],
-    _activeDir: null,
     _collapsed: {},
 
     async refresh() {
-        this._aiFiles = Extractor.extract();
-        this._activeDir = Config.mainDir;
-        await this._loadAllWorkFiles();
-        await this._loadUserFiles();
+        await FileService.refresh();
         this.render();
         this._restoreState();
-    },
-
-    async _loadAllWorkFiles() {
-        this._workFiles = {};
-        var dirs = Config.workDirs;
-        for (var i = 0; i < dirs.length; i++) {
-            try {
-                var r = await fetch(Config.serverUrl + '/api/files/list?dir=' + encodeURIComponent(dirs[i]) + '&flat=1');
-                var j = await r.json();
-                this._workFiles[dirs[i]] = (j.files || []).map(function(f) {
-                    return { name: f.name || f, size: f.size || 0, isOriginal: true };
-                });
-            } catch (e) {
-                this._workFiles[dirs[i]] = [];
-            }
-        }
-
-        var aiNames = this._aiFiles.map(function(f) { return f.name; });
-        var allExistingNames = [];
-        for (var d in this._workFiles) {
-            this._workFiles[d].forEach(function(f) {
-                f._hasAi = aiNames.indexOf(f.name) !== -1;
-                allExistingNames.push(f.name);
-            });
-        }
-
-        var mainDir = Config.mainDir;
-        var self = this;
-        this._aiFiles.forEach(function(aiFile) {
-            if (allExistingNames.indexOf(aiFile.name) === -1) {
-                if (!self._workFiles[mainDir]) self._workFiles[mainDir] = [];
-                self._workFiles[mainDir].push({
-                    name: aiFile.name,
-                    content: aiFile.content,
-                    isAi: true,
-                    isNew: true
-                });
-            }
-        });
-    },
-
-    async _loadUserFiles() {
-        var all = await DB.getAllFiles();
-        this._userFiles = all
-            .filter(function(f) { return f.type === 'user'; })
-            .map(function(f) { return { name: f.name, content: f.content, isUser: true, dbKey: f.key, dir: f.dir || Config.mainDir }; });
     },
 
     async _restoreState() {
@@ -68,7 +15,7 @@ const FileTree = {
 
     async saveState() {
         await DB.saveState({
-            workDir: this._activeDir,
+            workDir: FileService.getActiveDir(),
             inputText: document.getElementById('aiInput').value
         });
     },
@@ -78,12 +25,11 @@ const FileTree = {
         var container = document.getElementById('aiFileList');
         var search = (document.getElementById('aiSearchFiles')?.value || '').toLowerCase();
         var html = '';
-        var dirs = Config.workDirs;
-        if (!dirs.length) dirs = ['workspace'];
+        var dirs = FileService.getAllDirs();
 
         dirs.forEach(function(dir) {
             var folderName = dir.split('\\').pop().split('/').pop();
-            var collapsed = self._collapsed[dir] || false;
+            var collapsed = self._collapsed[dir] !== false;
             var arrow = collapsed ? '▶' : '▼';
             var display = collapsed ? 'none' : 'block';
 
@@ -96,21 +42,29 @@ const FileTree = {
                 '<div class="ai-dir-files" style="display:' + display + '">';
 
             if (!collapsed) {
-                var files = self._workFiles[dir] || [];
+                var files = FileService.getFilesForDir(dir);
                 if (search) {
                     files = files.filter(function(f) { return f.name.toLowerCase().indexOf(search) !== -1; });
                 }
 
                 files.forEach(function(f) {
-                    var icon = f.isAi ? '🤖' : (f._hasAi ? '🤖' : (f._updated ? '✅' : '📄'));
-                    var type = f.isAi ? 'ai' : 'original';
+                    var icon = '';
+                    var type = 'original';
+                    if (f.isAi) {
+                        icon = '🤖';
+                        type = 'ai';
+                    } else if (f._hasAi) {
+                        icon = '🤖';
+                        type = 'ai';
+                    }
+
                     html += '<div class="ai-file-item" data-name="' + Utils.escAttr(f.name) + '" data-dir="' + Utils.escAttr(dir) + '" oncontextmenu="ContextMenu.show(event,\'' + Utils.escAttr(f.name) + '\',\'' + type + '\')">' +
-                        '<span class="ai-file-icon">' + icon + '</span>' +
-                        '<span class="ai-file-name">' + Utils.esc(f.name) + '</span>' +
+                        (icon ? '<span class="ai-file-icon">' + icon + '</span>' : '') +
+                        '<span class="ai-file-name"' + (icon ? '' : ' style="padding-left:20px"') + '>' + Utils.esc(f.name) + '</span>' +
                     '</div>';
                 });
 
-                self._userFiles.forEach(function(uf) {
+                FileService.getUserFiles().forEach(function(uf) {
                     if (uf.dir === dir || !uf.dir) {
                         html += '<div class="ai-file-item" data-name="' + Utils.escAttr(uf.name) + '" data-dir="' + Utils.escAttr(dir) + '" oncontextmenu="ContextMenu.show(event,\'' + Utils.escAttr(uf.name) + '\',\'user\')">' +
                             '<span class="ai-file-icon">✏️</span>' +
@@ -126,14 +80,15 @@ const FileTree = {
         container.innerHTML = html;
 
         container.querySelectorAll('.ai-dir-header').forEach(function(header) {
-            header.onclick = function() {
+            header.onclick = async function() {
                 var dir = this.dataset.dir;
                 var filesDiv = this.nextElementSibling;
                 var arrowEl = this.querySelector('.ai-dir-arrow');
+
                 if (filesDiv.style.display === 'none') {
-                    filesDiv.style.display = 'block';
-                    arrowEl.textContent = '▼';
+                    await FileService.loadDir(dir);
                     self._collapsed[dir] = false;
+                    self.render();
                 } else {
                     filesDiv.style.display = 'none';
                     arrowEl.textContent = '▶';
@@ -146,8 +101,8 @@ const FileTree = {
             item.onclick = function(e) {
                 var name = this.dataset.name;
                 var dir = this.dataset.dir;
-                self._activeDir = dir;
-                var file = self._findFile(name, dir);
+                FileService.setActiveDir(dir);
+                var file = FileService.findFile(name, dir);
                 if (file) {
                     Preview.show(file);
                     if (file.isUser) Editor.startEdit(file);
@@ -155,13 +110,6 @@ const FileTree = {
                 }
             };
         });
-    },
-
-    _findFile: function(name, dir) {
-        var files = (this._workFiles[dir] || [])
-            .concat(this._aiFiles)
-            .concat(this._userFiles);
-        return files.find(function(f) { return f.name === name; });
     },
 
     async _loadContent(file, dir) {
@@ -181,35 +129,28 @@ const FileTree = {
     },
 
     getSelectedFiles: function() {
-        var result = [];
-        this._aiFiles.forEach(function(f) {
+        return FileService.getAiFiles().map(function(f) {
             f._dir = Config.mainDir;
-            result.push(f);
+            return f;
         });
-        return result;
     },
 
     getFileByName: function(name) {
-        var dirs = Config.workDirs;
-        for (var i = 0; i < dirs.length; i++) {
-            var f = this._findFile(name, dirs[i]);
-            if (f) return f;
-        }
-        return null;
+        return FileService.getFileByName(name);
     },
 
     removeAiFile: function(name) {
-        this._aiFiles = this._aiFiles.filter(function(f) { return f.name !== name; });
+        FileService.removeAiFile(name);
         this.render();
     },
 
     removeUserFile: function(name) {
-        this._userFiles = this._userFiles.filter(function(f) { return f.name !== name; });
+        FileService.removeUserFile(name);
         this.render();
     },
 
     addUserFile: function(name, content) {
-        this._userFiles.push({ name: name, content: content, isUser: true });
+        FileService.addUserFile(name, content);
         this.render();
     }
 };

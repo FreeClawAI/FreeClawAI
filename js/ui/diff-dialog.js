@@ -1,54 +1,62 @@
 // FreeClaw - File diff dialog
 const DiffDialog = {
-    show(filename, aiFile) {
-        FileTree._loadContent({ name: filename, isOriginal: true }).then(() => {
-            const orig = FileTree.getFileByName(filename);
-            if (!orig?.content) return;
-            this._render(filename, orig.content, aiFile.content);
+    show: function(filename, aiFile) {
+        var dirs = FileService.getAllDirs();
+        var origFile = null;
+        for (var i = 0; i < dirs.length; i++) {
+            var f = FileService.findFile(filename, dirs[i]);
+            if (f && f.isOriginal) { origFile = f; break; }
+        }
+        if (!origFile) return;
+        FileTree._loadContent(origFile, origFile._dir || Config.mainDir).then(function() {
+            if (!origFile.content) return;
+            DiffDialog._render(filename, origFile.content, aiFile.content);
         });
     },
 
-    _render(filename, original, modified) {
-        const origLines = original.split('\n');
-        const modLines = modified.split('\n');
-        const diff = this._simpleDiff(origLines, modLines);
-        const adds = diff.filter(d => d.type === 'add').length;
-        const dels = diff.filter(d => d.type === 'del').length;
+    _render: function(filename, original, modified) {
+        var origLines = original.split('\n');
+        var modLines = modified.split('\n');
+        var diff = this._simpleDiff(origLines, modLines);
+        var adds = diff.filter(function(d) { return d.type === 'add'; }).length;
+        var dels = diff.filter(function(d) { return d.type === 'del'; }).length;
 
-        let html = `<h3>${I18n.t('diff.title', Utils.esc(filename))}</h3>
-            <div style="display:flex;gap:8px;margin-bottom:8px;font-size:12px">
-                <div style="flex:1"><strong>📄 ${I18n.t('diff.original')}</strong> (${origLines.length})</div>
-                <div style="flex:1"><strong>🤖 ${I18n.t('diff.modified')}</strong> (${modLines.length})</div>
-            </div>
-            <div style="max-height:55vh;overflow:auto;font-family:monospace;font-size:12px">`;
+        var html = '<h3>' + I18n.t('Diff: {0}', Utils.esc(filename)) + '</h3>' +
+            '<div style="display:flex;gap:8px;margin-bottom:8px;font-size:12px">' +
+                '<div style="flex:1"><strong>📄 ' + I18n.t('Original') + '</strong> (' + origLines.length + ')</div>' +
+                '<div style="flex:1"><strong>🤖 ' + I18n.t('AI') + '</strong> (' + modLines.length + ')</div>' +
+            '</div>' +
+            '<div style="max-height:55vh;overflow:auto;font-family:monospace;font-size:12px">';
 
-        diff.forEach(d => {
-            const bg = d.type === 'add' ? '#e6ffe6' : d.type === 'del' ? '#ffe6e6' : 'transparent';
-            const sign = d.type === 'add' ? '+' : d.type === 'del' ? '-' : ' ';
-            html += `<div style="display:flex;background:${bg}">
-                <div style="width:40px;text-align:right;color:#999;padding:1px 6px;flex-shrink:0">${d.oldLine || ''}</div>
-                <div style="width:40px;text-align:right;color:#999;padding:1px 6px;flex-shrink:0">${d.newLine || ''}</div>
-                <div style="flex:1;padding:1px 6px">${sign} ${Utils.esc(d.text)}</div>
-            </div>`;
+        diff.forEach(function(d) {
+            var bg = d.type === 'add' ? '#e6ffe6' : d.type === 'del' ? '#ffe6e6' : 'transparent';
+            var sign = d.type === 'add' ? '+' : d.type === 'del' ? '-' : ' ';
+            html += '<div style="display:flex;background:' + bg + '">' +
+                '<div style="width:40px;text-align:right;color:#999;padding:1px 6px;flex-shrink:0">' + (d.oldLine || '') + '</div>' +
+                '<div style="width:40px;text-align:right;color:#999;padding:1px 6px;flex-shrink:0">' + (d.newLine || '') + '</div>' +
+                '<div style="flex:1;padding:1px 6px">' + sign + ' ' + Utils.esc(d.text) + '</div>' +
+            '</div>';
         });
 
-        html += `</div>
-            <div style="margin-top:8px;color:#666;font-size:12px">${I18n.t('diff.changes', adds, dels)}</div>
-            <div class="ai-dialog-btns">
-                <button id="aiDiffConfirm">${I18n.t('diff.confirm')}</button>
-                <button onclick="Dialog.close()">${I18n.t('btn.cancel')}</button>
-            </div>`;
+        html += '</div>' +
+            '<div style="margin-top:8px;color:#666;font-size:12px">' + I18n.t('+{0} -{1}', adds, dels) + '</div>' +
+            '<div class="ai-dialog-btns">' +
+                '<button id="aiDiffConfirm">' + I18n.t('Confirm Overwrite') + '</button>' +
+                '<button id="aiDiffCancel">' + I18n.t('Cancel') + '</button>' +
+            '</div>';
         Dialog.show(html);
-        document.getElementById('aiDiffConfirm').onclick = () => {
+
+        document.getElementById('aiDiffCancel').onclick = function() { Dialog.close(); };
+        document.getElementById('aiDiffConfirm').onclick = function() {
             Dialog.close();
-            const aiFiles = FileTree._aiFiles.filter(f => f.name === filename);
+            var aiFiles = FileService.getAiFiles().filter(function(f) { return f.name === filename; });
             if (aiFiles.length > 0) Saver._batchSave(aiFiles);
         };
     },
 
-    _simpleDiff(oldLines, newLines) {
-        const result = [];
-        let i = 0, j = 0;
+    _simpleDiff: function(oldLines, newLines) {
+        var result = [];
+        var i = 0, j = 0;
         while (i < oldLines.length || j < newLines.length) {
             if (i < oldLines.length && j < newLines.length && oldLines[i] === newLines[j]) {
                 result.push({ type: 'same', oldLine: i + 1, newLine: j + 1, text: oldLines[i] }); i++; j++;

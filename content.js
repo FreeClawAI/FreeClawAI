@@ -18,23 +18,23 @@
         document.getElementById('aiClosePanelBtn').onclick = function() { Panel.close(); };
         document.getElementById('aiNewFileBtn').onclick = function() { Keyboard._newFile(); };
         document.getElementById('aiNewFolderBtn').onclick = async function() {
-            var name = prompt(I18n._lang === 'zh' ? '文件夹名:' : 'Folder name:');
+            var name = prompt(I18n.t('Folder name:'));
             if (name) {
                 try {
                     await fetch(Config.serverUrl + '/api/files/mkdir', {
                         method: 'POST', headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ dir: Config.mainDir, name: name })
                     });
-                    Toast.show(I18n.t('toast.folder', name));
-                    await FileTree._loadWorkFiles();
+                    Toast.show(I18n.t('Folder: {0}', name));
+                    await FileService._loadAllWorkFiles();
                     FileTree.render();
-                } catch (e) { Toast.show(I18n.t('toast.saveFail', name), 'error'); }
+                } catch (e) { Toast.show(I18n.t('Failed: {0}', name), 'error'); }
             }
         };
         document.getElementById('aiStarBtn').onclick = async function() {
             var text = document.getElementById('aiInput').value.trim();
-            var name = prompt(I18n._lang === 'zh' ? '模板名称:' : 'Template name:');
-            if (name && text) { await TemplatesBar.add(name, text); Toast.show(I18n.t('toast.template', name)); }
+            var name = prompt(I18n.t('Template name:'));
+            if (name && text) { await TemplatesBar.add(name, text); Toast.show(I18n.t('Template: {0}', name)); }
         };
         document.getElementById('aiInput').addEventListener('keydown', function(e) {
             if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); Sender.send(); }
@@ -57,15 +57,15 @@
             if (btn) {
                 if (connected) {
                     btn.textContent = '🔗';
-                    btn.title = I18n._lang === 'zh' ? '已连接' : 'Connected';
+                    btn.title = I18n.t('Connected');
                 } else {
                     btn.textContent = '🔌';
-                    btn.title = I18n._lang === 'zh' ? '已断开' : 'Disconnected';
+                    btn.title = I18n.t('Disconnected');
                 }
             }
             if (wasConnected && !connected) {
                 SettingsDialog.show();
-                Toast.show(I18n.t('toast.cannotConnect'), 'error');
+                Toast.show(I18n.t('Cannot connect. Start node server.js'), 'error');
             }
             wasConnected = connected;
         }
@@ -97,16 +97,15 @@
                         .then(function(r) {
                             if (!r.ok) {
                                 SettingsDialog.show();
-                                Toast.show(I18n.t('toast.cannotConnect'), 'error');
+                                Toast.show(I18n.t('Cannot connect. Start node server.js'), 'error');
                             }
                         })
                         .catch(function() {
                             SettingsDialog.show();
-                            Toast.show(I18n.t('toast.cannotConnect'), 'error');
+                            Toast.show(I18n.t('Cannot connect. Start node server.js'), 'error');
                         });
                 }, 3000);
             } else {
-                // Validate work dirs with server
                 try {
                     var vr = await fetch(Config.serverUrl + '/api/config', {
                         method: 'POST',
@@ -131,7 +130,7 @@
         var origClose = Panel.close;
         Panel.close = function() {
             if (Editor && typeof Editor.hasChanges === 'function' && Editor.hasChanges()) {
-                if (!confirm(I18n.t('toast.unsaved'))) return;
+                if (!confirm(I18n.t('Unsaved changes. Close anyway?'))) return;
             }
             clearInterval(heartbeatTimer);
             origClose.call(Panel);

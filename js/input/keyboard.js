@@ -1,6 +1,6 @@
-// FreeClaw - Keyboard shortcuts for the panel
+// FreeClaw - Keyboard shortcuts
 const Keyboard = {
-    init() {
+    init: function() {
         document.addEventListener('keydown', function(e) {
             var panel = document.getElementById('ai-file-panel');
             if (!panel || !panel.classList.contains('show')) return;
@@ -11,8 +11,8 @@ const Keyboard = {
         });
     },
 
-    _newFile() {
-        var name = prompt(I18n._lang === 'zh' ? '文件名:' : 'File name:');
+    _newFile: function() {
+        var name = prompt(I18n.t('File name:'));
         if (name) {
             FileTree.addUserFile(name, '');
             Preview.show({ name: name, content: '', isUser: true });

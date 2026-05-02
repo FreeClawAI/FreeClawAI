@@ -25,29 +25,28 @@ const Panel = {
             '<div class="ai-main">' +
                 '<div class="ai-left">' +
                     '<div class="ai-left-header">' +
-                        '<input id="aiSearchFiles" class="ai-search" placeholder="' + I18n.t('file.search') + '">' +
-                        '<button id="aiRefreshBtn" title="' + I18n.t('tooltip.extract') + '">' + I18n.t('btn.extract') + '</button>' +
-                        '<button id="aiSaveBtn" title="' + I18n.t('tooltip.save') + '">' + I18n.t('btn.save') + '</button>' +
-                        '<button id="aiNewFileBtn" title="' + I18n.t('tooltip.newFile') + '">' + I18n.t('btn.newFile') + '</button>' +
-                        '<button id="aiNewFolderBtn" title="' + I18n.t('tooltip.newFolder') + '">' + I18n.t('btn.newFolder') + '</button>' +
-                        '<button id="aiConfigBtn" title="' + (I18n._lang === 'zh' ? '已断开' : 'Disconnected') + '" class="ai-status-btn">🔌</button>' +
+                        '<input id="aiSearchFiles" class="ai-search" placeholder="' + I18n.t('Search...') + '">' +
+                        '<button id="aiRefreshBtn" title="' + I18n.t('Extract AI files') + '">🔍</button>' +
+                        '<button id="aiSaveBtn" title="' + I18n.t('Save selected') + '">💾</button>' +
+                        '<button id="aiNewFileBtn" title="' + I18n.t('New file') + '">📄</button>' +
+                        '<button id="aiNewFolderBtn" title="' + I18n.t('New folder') + '">📁</button>' +
+                        '<button id="aiConfigBtn" title="' + I18n.t('Disconnected') + '" class="ai-status-btn">🔌</button>' +
                     '</div>' +
                     '<div id="aiFileList"></div>' +
-                    '<div id="aiSelectedInfo"></div>' +
                 '</div>' +
                 '<div class="ai-right">' +
                     '<div class="ai-body">' +
-                        '<div id="aiEmpty">' + I18n.t('file.empty') + '</div>' +
+                        '<div id="aiEmpty">' + I18n.t('Click a file to view') + '</div>' +
                         '<textarea id="aiLineNumbers" readonly></textarea>' +
                         '<textarea id="aiPreviewCode" readonly></textarea>' +
                     '</div>' +
                     '<div id="aiPromptBar"></div>' +
                     '<div id="aiTemplateBar"></div>' +
                     '<div class="ai-bottom">' +
-                        '<textarea id="aiInput" rows="1" placeholder="' + I18n.t('send.placeholder') + '"></textarea>' +
-                        '<button id="aiSendBtn">' + I18n.t('btn.send') + '</button>' +
+                        '<textarea id="aiInput" rows="1" placeholder="' + I18n.t('Add message... (Enter)') + '"></textarea>' +
+                        '<button id="aiSendBtn">' + I18n.t('Send') + '</button>' +
                         '<button id="aiStarBtn" style="display:none">⭐</button>' +
-                        '<button id="aiClosePanelBtn" style="background:#6c757d">' + I18n.t('btn.close') + '</button>' +
+                        '<button id="aiClosePanelBtn" style="background:#6c757d">' + I18n.t('Close') + '</button>' +
                     '</div>' +
                 '</div>' +
             '</div>' +
@@ -64,7 +63,7 @@ const Panel = {
 
     close: function() {
         if (Editor && typeof Editor.hasChanges === 'function' && Editor.hasChanges()) {
-            if (!confirm(I18n.t('toast.unsaved'))) return;
+            if (!confirm(I18n.t('Unsaved changes. Close anyway?'))) return;
         }
         this.el.classList.remove('show');
         this.overlay.classList.remove('show');

@@ -4,31 +4,31 @@ const PromptsBar = {
 
     async load() {
         try {
-            const r = await fetch(Config.serverUrl + '/api/prompts/list');
-            const j = await r.json();
+            var r = await fetch(Config.serverUrl + '/api/prompts/list');
+            var j = await r.json();
             if (j.success && j.data) this._prompts = j.data;
-        } catch (e) { /* Server prompt module may not exist */ }
+        } catch (e) {}
         this.render();
     },
 
     render() {
-        const bar = document.getElementById('aiPromptBar');
+        var bar = document.getElementById('aiPromptBar');
         if (!this._prompts.length) { bar.innerHTML = ''; return; }
-        bar.innerHTML = this._prompts.map(p => {
-            const title = p.Title || p.title || '';
-            const content = p.Content || p.content || '';
-            return `<span class="ai-prompt-item">
-                <span class="ai-prompt-name" title="${Utils.escAttr(content)}">${Utils.esc(title)}</span>
-                <button class="ai-prompt-select" data-content="${Utils.escAttr(content)}">📝</button>
-                <button class="ai-prompt-send" data-content="${Utils.escAttr(content)}">▶️</button>
-            </span>`;
+        bar.innerHTML = this._prompts.map(function(p) {
+            var title = p.Title || p.title || '';
+            var content = p.Content || p.content || '';
+            return '<span class="ai-prompt-item">' +
+                '<span class="ai-prompt-name" title="' + Utils.escAttr(content) + '">' + Utils.esc(title) + '</span>' +
+                '<button class="ai-prompt-select" data-content="' + Utils.escAttr(content) + '">📝</button>' +
+                '<button class="ai-prompt-send" data-content="' + Utils.escAttr(content) + '">▶️</button>' +
+            '</span>';
         }).join('');
 
-        bar.querySelectorAll('.ai-prompt-select').forEach(btn => {
-            btn.onclick = () => { document.getElementById('aiInput').value = btn.dataset.content; };
+        bar.querySelectorAll('.ai-prompt-select').forEach(function(btn) {
+            btn.onclick = function() { document.getElementById('aiInput').value = btn.dataset.content; };
         });
-        bar.querySelectorAll('.ai-prompt-send').forEach(btn => {
-            btn.onclick = () => Sender.sendDirect(btn.dataset.content);
+        bar.querySelectorAll('.ai-prompt-send').forEach(function(btn) {
+            btn.onclick = function() { Sender.sendDirect(btn.dataset.content); };
         });
     }
 };

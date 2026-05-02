@@ -1,144 +1,175 @@
-// File list manager - combines workspace files, AI files, and user files
-const FileList = {
+// FreeClaw - File service (data layer)
+var ALLOWED_EXTS = [
+    'cs', 'js', 'ts', 'jsx', 'tsx', 'html', 'htm', 'css', 'scss', 'less',
+    'json', 'xml', 'yaml', 'yml', 'md', 'txt', 'py', 'java', 'rs', 'go',
+    'c', 'cpp', 'h', 'hpp', 'sh', 'bat', 'cmd', 'ps1', 'sql', 'vue',
+    'svelte', 'rb', 'php', 'swift', 'kt', 'dart', 'lua', 'r', 'm', 'mm',
+    'gitignore', 'env', 'editorconfig', 'prettierrc', 'eslintrc'
+];
+
+function isAllowedFile(name) {
+    var ext = name.split('.').pop().toLowerCase();
+    if (ALLOWED_EXTS.indexOf(ext) !== -1) return true;
+    var basename = name.toLowerCase();
+    if (basename === 'makefile' || basename === 'dockerfile' || basename === 'license') return true;
+    return false;
+}
+
+const FileService = {
     _aiFiles: [],
-    _workFiles: [],
+    _workFiles: {},
     _userFiles: [],
+    _activeDir: null,
 
     async refresh() {
         this._aiFiles = Extractor.extract();
-        await this._loadWorkFiles();
+        this._activeDir = Config.mainDir;
+        await this._loadAllWorkFiles();
         await this._loadUserFiles();
-        this._render();
-        this._restoreState();
     },
 
-    async _loadWorkFiles() {
+    async _loadAllWorkFiles() {
+        this._workFiles = {};
+        var dirs = Config.workDirs;
+
+        for (var i = 0; i < dirs.length; i++) {
+            await this._loadSingleDir(dirs[i], false);
+        }
+
+        var aiNames = this._aiFiles.map(function(f) { return f.name; });
         try {
-            const r = await fetch(`${Config.serverUrl}/api/files/list?dir=${encodeURIComponent(Config.mainDir)}`);
-            const j = await r.json();
-            this._workFiles = (j.files || []).map(f => ({
-                name: f.name || f, size: f.size || 0, isOriginal: true
-            }));
-        } catch (e) { this._workFiles = []; }
+            var fr = await fetch(Config.serverUrl + '/api/files/find', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ dirs: dirs, aiFiles: aiNames })
+            });
+            var fj = await fr.json();
+            var matches = fj.matches || {};
+
+            for (var d in this._workFiles) {
+                this._workFiles[d].forEach(function(f) {
+                    f._hasAi = matches[f.name] !== null && matches[f.name] !== undefined;
+                });
+            }
+
+            var mainDir = Config.mainDir;
+            var self = this;
+            this._aiFiles.forEach(function(aiFile) {
+                if (!matches[aiFile.name]) {
+                    if (!self._workFiles[mainDir]) self._workFiles[mainDir] = [];
+                    self._workFiles[mainDir].push({
+                        name: aiFile.name,
+                        content: aiFile.content,
+                        isAi: true,
+                        isNew: true
+                    });
+                }
+            });
+        } catch (e) {}
+    },
+
+    async _loadSingleDir(dir, addAiNew) {
+        try {
+            var r = await fetch(Config.serverUrl + '/api/files/list', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ dir: dir, flat: true })
+            });
+            var j = await r.json();
+            this._workFiles[dir] = (j.files || []).filter(function(f) {
+                return isAllowedFile(f.name || f);
+            }).map(function(f) {
+                return { name: f.name || f, size: f.size || 0, isOriginal: true };
+            });
+
+            var aiNames = this._aiFiles.map(function(f) { return f.name; });
+            var self = this;
+            this._workFiles[dir].forEach(function(f) {
+                f._hasAi = aiNames.indexOf(f.name) !== -1;
+            });
+
+            if (addAiNew !== false) {
+                var existingNames = this._workFiles[dir].map(function(f) { return f.name; });
+                this._aiFiles.forEach(function(aiFile) {
+                    if (existingNames.indexOf(aiFile.name) === -1) {
+                        self._workFiles[dir].push({
+                            name: aiFile.name,
+                            content: aiFile.content,
+                            isAi: true,
+                            isNew: true
+                        });
+                    }
+                });
+            }
+        } catch (e) {}
     },
 
     async _loadUserFiles() {
-        const all = await DB.getAllFiles();
+        var all = await DB.getAllFiles();
         this._userFiles = all
-            .filter(f => f.dir === Config.mainDir && f.type === 'user')
-            .map(f => ({ name: f.name, content: f.content, isUser: true, dbKey: f.key }));
+            .filter(function(f) { return f.type === 'user'; })
+            .map(function(f) { return { name: f.name, content: f.content, isUser: true, dbKey: f.key, dir: f.dir || Config.mainDir }; });
     },
 
-    async _restoreState() {
-        const state = await DB.getState();
-        if (state?.selectedFiles) {
-            state.selectedFiles.forEach(name => {
-                const cb = document.querySelector(`.ai-file-item[data-name="${Utils.escAttr(name)}"] input`);
-                if (cb) cb.checked = true;
-            });
-        }
-        if (state?.inputText) document.getElementById('aiInput').value = state.inputText;
+    async loadDir(dir) {
+        await this._loadSingleDir(dir);
     },
 
-    async saveState() {
-        const selected = [];
-        document.querySelectorAll('.ai-file-cb:checked').forEach(cb => {
-            selected.push(cb.closest('.ai-file-item').dataset.name);
-        });
-        await DB.saveState({
-            workDir: Config.mainDir,
-            selectedFiles: selected,
-            inputText: document.getElementById('aiInput').value
-        });
+    getFilesForDir(dir) {
+        return this._workFiles[dir] || [];
     },
 
-    _render() {
-        const list = [...this._workFiles, ...this._aiFiles, ...this._userFiles];
-        const search = document.getElementById('aiSearchFiles')?.value?.toLowerCase() || '';
-        const filtered = search ? list.filter(f => f.name.toLowerCase().includes(search)) : list;
+    getAllDirs() {
+        return Config.workDirs;
+    },
 
-        const container = document.getElementById('aiFileList');
-        let html = '';
-        filtered.forEach((f, i) => {
-            const icon = f.isAi ? '🤖' : (f.isUser ? '✏️' : (f._updated ? '✅' : '📄'));
-            const exists = f.isAi && this._workFiles.some(w => w.name === f.name);
-            const cls = 'ai-file-item' + (exists ? ' ai-exists' : '');
-            const type = f.isAi ? 'ai' : (f.isUser ? 'user' : 'original');
-            html += `<div class="${cls}" data-idx="${i}" data-name="${Utils.escAttr(f.name)}" oncontextmenu="ContextMenu.show(event,'${Utils.escAttr(f.name)}','${type}')">
-                <input type="checkbox" class="ai-file-cb" ${f.isOriginal ? '' : 'checked'}>
-                <span class="ai-file-icon">${icon}</span>
-                <span class="ai-file-name">${Utils.esc(f.name)}</span>
-            </div>`;
-        });
-        container.innerHTML = html;
+    getAiFiles() {
+        return this._aiFiles;
+    },
 
-        container.querySelectorAll('.ai-file-item').forEach(item => {
-            item.onclick = function(e) {
-                if (e.target.tagName === 'INPUT') { FileList.saveState(); return; }
-                const name = this.dataset.name;
-                const file = FileList.getFileByName(name);
-                if (file) {
-                    Preview.show(file);
-                    if (file.isUser) Editor.startEdit(file);
-                    if (file.isOriginal && !file.content) FileList._loadContent(file);
-                }
-            };
-        });
-        this._updateSelectedInfo();
+    getUserFiles() {
+        return this._userFiles;
+    },
+
+    getActiveDir() {
+        return this._activeDir;
+    },
+
+    setActiveDir(dir) {
+        this._activeDir = dir;
+    },
+
+    findFile(name, dir) {
+        var files = (this._workFiles[dir] || [])
+            .concat(this._aiFiles)
+            .concat(this._userFiles);
+        return files.find(function(f) { return f.name === name; });
     },
 
     getFileByName(name) {
-        return [...this._workFiles, ...this._aiFiles, ...this._userFiles].find(f => f.name === name);
-    },
-
-    async _loadContent(file) {
-        try {
-            const r = await fetch(`${Config.serverUrl}/api/files/read`, {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ dir: Config.mainDir, filename: file.name })
-            });
-            const j = await r.json();
-            file.content = j.content;
-            file.md5 = j.md5;
-            Preview.show(file);
-        } catch (e) {
-            Preview.show({ name: file.name, content: I18n.t('toast.unableRead') });
+        var dirs = Config.workDirs;
+        for (var i = 0; i < dirs.length; i++) {
+            var f = this.findFile(name, dirs[i]);
+            if (f) return f;
         }
-    },
-
-    _updateSelectedInfo() {
-        const info = document.getElementById('aiSelectedInfo');
-        const checked = document.querySelectorAll('.ai-file-cb:checked');
-        if (!checked.length) { info.innerHTML = ''; return; }
-        const names = [];
-        checked.forEach(cb => names.push(cb.closest('.ai-file-item').dataset.name));
-        info.innerHTML = I18n.t('file.selected', names.map(n => Utils.esc(n)).join(', '));
-    },
-
-    getSelectedFiles() {
-        const result = [];
-        document.querySelectorAll('.ai-file-cb:checked').forEach(cb => {
-            const name = cb.closest('.ai-file-item').dataset.name;
-            const f = this.getFileByName(name);
-            if (f) result.push(f);
-        });
-        return result;
+        return null;
     },
 
     removeAiFile(name) {
-        this._aiFiles = this._aiFiles.filter(f => f.name !== name);
-        const wf = this._workFiles.find(f => f.name === name);
-        if (wf) wf._updated = true;
-        this._render();
+        this._aiFiles = this._aiFiles.filter(function(f) { return f.name !== name; });
+        // Also remove from workFiles
+        for (var d in this._workFiles) {
+            this._workFiles[d] = this._workFiles[d].filter(function(f) {
+                return !(f.isAi && f.name === name);
+            });
+        }
     },
 
     removeUserFile(name) {
-        this._userFiles = this._userFiles.filter(f => f.name !== name);
-        this._render();
+        this._userFiles = this._userFiles.filter(function(f) { return f.name !== name; });
     },
 
     addUserFile(name, content) {
-        this._userFiles.push({ name, content, isUser: true });
-        this._render();
+        this._userFiles.push({ name: name, content: content, isUser: true });
     }
 };

@@ -97,9 +97,12 @@ const server = http.createServer(function(req, res) {
             var data = {};
             if (body) data = JSON.parse(body);
 
+            // Heartbeat
             if (req.url === '/api/ping' && req.method === 'GET') {
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ status: 'ok' }));
+
+            // Validate dirs
             } else if (req.url === '/api/config' && req.method === 'POST') {
                 var dirs = data.dirs || [];
                 var validDirs = [];
@@ -116,19 +119,42 @@ const server = http.createServer(function(req, res) {
                 if (!validDirs.length) validDirs.push(WORKSPACE_DIR);
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ success: true, dirs: validDirs }));
-            } else if (req.url.startsWith('/api/files/list') && req.method === 'GET') {
-                const url = new URL(req.url, 'http://localhost');
-                const dir = url.searchParams.get('dir') || '';
-                const flat = url.searchParams.get('flat') === '1';
-                const files = listFiles(dir, flat);
+
+            // List single dir
+            } else if (req.url === '/api/files/list' && req.method === 'POST') {
+                var dir = data.dir || '';
+                var flat = data.flat !== false;
+                var files = listFiles(dir, flat);
                 res.writeHead(200, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ files }));
+                res.end(JSON.stringify({ files: files }));
+
+            // Find AI files in dirs
+            } else if (req.url === '/api/files/find' && req.method === 'POST') {
+                var searchDirs = data.dirs || [];
+                var aiFiles = data.aiFiles || [];
+                var matches = {};
+                aiFiles.forEach(function(aiName) {
+                    matches[aiName] = null;
+                    for (var i = 0; i < searchDirs.length; i++) {
+                        var fp = path.join(searchDirs[i], aiName);
+                        if (fs.existsSync(fp) && fs.statSync(fp).isFile()) {
+                            matches[aiName] = searchDirs[i];
+                            break;
+                        }
+                    }
+                });
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ matches: matches }));
+
+            // Read file
             } else if (req.url === '/api/files/read' && req.method === 'POST') {
-                const result = readFileContent(data.dir, data.filename);
+                var result = readFileContent(data.dir, data.filename);
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify(result));
+
+            // Write file
             } else if (req.url === '/api/files/write' && req.method === 'POST') {
-                const result = writeFile(data.dir, data.filename, data.content, { md5: data.md5, force: data.force });
+                var result = writeFile(data.dir, data.filename, data.content, { md5: data.md5, force: data.force });
                 if (result.conflict) {
                     res.writeHead(409, { 'Content-Type': 'application/json' });
                     res.end(JSON.stringify({ error: 'File modified', currentMd5: result.currentMd5 }));
@@ -136,14 +162,19 @@ const server = http.createServer(function(req, res) {
                     res.writeHead(200, { 'Content-Type': 'application/json' });
                     res.end(JSON.stringify(result));
                 }
+
+            // Make dir
             } else if (req.url === '/api/files/mkdir' && req.method === 'POST') {
-                const result = makeDir(data.dir, data.name);
+                var result = makeDir(data.dir, data.name);
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify(result));
+
+            // Delete file
             } else if (req.url === '/api/files/delete' && req.method === 'POST') {
-                const result = deleteFile(data.dir, data.filename);
+                var result = deleteFile(data.dir, data.filename);
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify(result));
+
             } else {
                 res.writeHead(404);
                 res.end('Not found');
