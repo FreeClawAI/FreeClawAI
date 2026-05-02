@@ -16,36 +16,60 @@ if (!fs.existsSync(WORKSPACE_DIR)) fs.mkdirSync(WORKSPACE_DIR, { recursive: true
 function resolvePath(dir, filename) {
     const workDir = dir ? path.resolve(dir) : WORKSPACE_DIR;
     const full = path.resolve(workDir, filename || '');
-    if (!full.startsWith(workDir)) throw new Error('Access denied');
+    if (process.platform === 'win32') {
+        if (!full.startsWith(workDir)) throw new Error('Access denied');
+    }
     return full;
 }
 
 function md5(str) { return crypto.createHash('md5').update(str).digest('hex'); }
 
+function normalizeDir(dir) {
+    if (!dir || !dir.trim()) return WORKSPACE_DIR;
+    var d = dir.trim();
+    if (process.platform === 'win32' && /^[A-Za-z]:$/.test(d)) d += '\\';
+    return d;
+}
+
 function listFiles(dir, flat) {
-    const workDir = dir ? path.resolve(dir) : WORKSPACE_DIR;
+    var workDir = normalizeDir(dir);
     if (!fs.existsSync(workDir)) return [];
+
     const result = [];
-    const items = fs.readdirSync(workDir, { withFileTypes: true });
+    var items;
+    try {
+        items = fs.readdirSync(workDir, { withFileTypes: true });
+    } catch (e) {
+        return [];
+    }
     items.forEach(function(item) {
-        if (item.isDirectory()) {
-            result.push({ name: item.name, isDir: true });
-            if (!flat) walk(path.join(workDir, item.name), item.name + '/');
-        } else {
-            const st = fs.statSync(path.join(workDir, item.name));
-            result.push({ name: item.name, size: st.size, isDir: false });
-        }
+        try {
+            if (item.isDirectory()) {
+                result.push({ name: item.name, isDir: true });
+                if (!flat) walk(path.join(workDir, item.name), item.name + '/');
+            } else {
+                var st = fs.statSync(path.join(workDir, item.name));
+                result.push({ name: item.name, size: st.size, isDir: false });
+            }
+        } catch (e) {}
     });
     function walk(d, prefix) {
-        const subItems = fs.readdirSync(d, { withFileTypes: true });
+        var subItems;
+        try {
+            subItems = fs.readdirSync(d, { withFileTypes: true });
+        } catch (e) {
+            return;
+        }
         subItems.forEach(function(item) {
-            if (item.isDirectory()) {
-                result.push({ name: prefix + item.name, isDir: true });
-                walk(path.join(d, item.name), prefix + item.name + '/');
-            } else {
-                const st = fs.statSync(path.join(d, item.name));
-                result.push({ name: prefix + item.name, size: st.size, isDir: false });
-            }
+            try {
+                if (item.isDirectory()) {
+                    result.push({ name: prefix + item.name, isDir: true });
+                    walk(path.join(d, item.name), prefix + item.name + '/');
+                } else {
+                    var st = fs.statSync(path.join(d, item.name));
+                    result.push({ name: prefix + item.name, size: st.size, isDir: false });
+                }
+            } catch (e) {}
         });
     }
     return result;
@@ -185,6 +209,7 @@ const server = http.createServer(function(req, res) {
                 res.end('Not found');
             }
         } catch (e) {
+            console.error('Server error:', e.message);
             res.writeHead(400, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ error: e.message }));
         }

@@ -1,8 +1,13 @@
 // FreeClaw - Content Script Entry Point
+var FreeClawFirstRun = true;
+
 (function() {
     I18n.init();
     Formatter.load();
     Panel.init();
+
+    // Bind config button immediately (before async init)
+    document.getElementById('aiConfigBtn').onclick = function() { SettingsDialog.show(); };
 
     DB.open().then(function() {
         return Config.load();
@@ -47,8 +52,6 @@
         );
         Preview.scrollSync();
 
-        document.getElementById('aiConfigBtn').onclick = function() { SettingsDialog.show(); };
-
         var heartbeatTimer = null;
         var wasConnected = false;
 
@@ -64,6 +67,7 @@
                 }
             }
             if (wasConnected && !connected) {
+                FreeClawFirstRun = false;
                 SettingsDialog.show();
                 Toast.show(I18n.t('Cannot connect. Start node server.js'), 'error');
             }
@@ -78,9 +82,9 @@
                 .catch(function() { updateStatusLight(false); });
         }
 
-        var origOpen = Panel.open;
+        var _origOpen = Panel.open;
         Panel.open = async function() {
-            origOpen.call(Panel);
+            _origOpen.call(Panel);
             heartbeat();
             heartbeatTimer = setInterval(heartbeat, 5000);
 
@@ -92,48 +96,41 @@
             updateStatusLight(connected);
 
             if (!connected) {
-                setTimeout(function() {
-                    fetch(Config.serverUrl + '/api/ping')
-                        .then(function(r) {
-                            if (!r.ok) {
+                if (FreeClawFirstRun) {
+                    FreeClawFirstRun = false;
+                    setTimeout(function() {
+                        SettingsDialog.show();
+                        Toast.show(I18n.t('Cannot connect. Start node server.js'), 'error');
+                    }, 500);
+                } else {
+                    setTimeout(function() {
+                        fetch(Config.serverUrl + '/api/ping')
+                            .then(function(r) {
+                                if (!r.ok) {
+                                    SettingsDialog.show();
+                                    Toast.show(I18n.t('Cannot connect. Start node server.js'), 'error');
+                                }
+                            })
+                            .catch(function() {
                                 SettingsDialog.show();
                                 Toast.show(I18n.t('Cannot connect. Start node server.js'), 'error');
-                            }
-                        })
-                        .catch(function() {
-                            SettingsDialog.show();
-                            Toast.show(I18n.t('Cannot connect. Start node server.js'), 'error');
-                        });
-                }, 3000);
+                            });
+                    }, 3000);
+                }
             } else {
-                try {
-                    var vr = await fetch(Config.serverUrl + '/api/config', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ dirs: Config.workDirs })
-                    });
-                    if (vr.ok) {
-                        var vj = await vr.json();
-                        if (vj.success && vj.dirs) {
-                            Config._data.workDirs = vj.dirs;
-                            await Config.save();
-                        }
-                    }
-                } catch (e) {}
-
                 await FileTree.refresh();
                 await PromptsBar.load();
                 TemplatesBar.render();
             }
         };
 
-        var origClose = Panel.close;
+        var _origClose = Panel.close;
         Panel.close = function() {
             if (Editor && typeof Editor.hasChanges === 'function' && Editor.hasChanges()) {
                 if (!confirm(I18n.t('Unsaved changes. Close anyway?'))) return;
             }
             clearInterval(heartbeatTimer);
-            origClose.call(Panel);
+            _origClose.call(Panel);
         };
     });
 })();

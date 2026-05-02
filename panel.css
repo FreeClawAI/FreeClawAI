@@ -16,11 +16,9 @@
 .ai-dir-arrow{font-size:10px;width:12px;color:#666}
 .ai-dir-icon{font-size:13px}
 .ai-dir-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
-.ai-dir-count{font-size:11px;color:#999}
 .ai-dir-files{padding-left:0}
 .ai-file-item{display:flex;align-items:center;gap:4px;padding:5px 8px 5px 16px;cursor:pointer;font-size:12px;border-bottom:1px solid #eee}
 .ai-file-item:hover{background:#f1f1f1}
-.ai-file-item.active{background:#e3f2fd}
 .ai-file-icon{flex-shrink:0;font-size:13px}
 .ai-file-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
 .ai-right{flex:1;display:flex;flex-direction:column;overflow:hidden}
@@ -49,20 +47,14 @@
 .ai-dialog-btns{margin-top:12px;display:flex;gap:6px}
 .ai-dialog-btns button{padding:6px 14px;border:1px solid #ccc;border-radius:4px;background:white;cursor:pointer;font-size:12px}
 .ai-dialog-btns button:hover{background:#f0f0f0}
-
-.ai-picker-container{display:flex;flex-direction:column;min-height:400px}
-.ai-picker-header{padding:8px 0}
-.ai-picker-header h3{margin:0}
-.ai-picker-path-bar{padding:4px 0;border-bottom:1px solid #eee;display:flex;align-items:center}
-.ai-picker-input-bar{padding:6px 0;display:flex;gap:6px;align-items:center}
-.ai-picker-body{flex:1;display:flex;min-height:250px;max-height:350px;overflow:hidden}
-.ai-picker-sidebar{width:120px;border-right:1px solid #eee;overflow:auto;background:#fafafa;flex-shrink:0}
-.ai-picker-main{flex:1;overflow:auto}
-.ai-picker-footer{display:flex;gap:6px;justify-content:flex-end;padding-top:8px;border-top:1px solid #eee}
-.ai-dialog-btn{padding:6px 14px;border:1px solid #ccc;border-radius:4px;background:white;cursor:pointer;font-size:12px}
-.ai-dialog-btn.primary{background:#007bff;color:white;border-color:#007bff}
-.ai-breadcrumb-link:hover{text-decoration:underline}
+.ai-dialog-layer{display:none}
 .ai-dialog-header{padding-bottom:10px;border-bottom:1px solid #eee;margin-bottom:10px}
 .ai-dialog-header h3{margin:0}
 .ai-dialog-body{min-height:60px}
 .ai-dialog-footer{display:flex;gap:6px;justify-content:flex-end;padding-top:10px;border-top:1px solid #eee;margin-top:10px}
+.ai-picker-container{min-width:700px}
+.ai-picker-path-bar{padding:4px 0;border-bottom:1px solid #eee;display:flex;align-items:center}
+.ai-picker-input-bar{padding:6px 0;display:flex;gap:6px;align-items:center}
+.ai-picker-body{flex:1;display:flex;min-height:250px;max-height:350px;overflow:hidden}
+.ai-picker-sidebar{width:140px;border-right:1px solid #eee;overflow:auto;background:#fafafa;flex-shrink:0}
+.ai-picker-main{flex:1;overflow:auto}

@@ -46,7 +46,7 @@ const TemplatesBar = {
         });
         body += '</div>';
 
-        DialogStack.show({
+        DialogStack.show('templates', {
             title: I18n.t('Templates'),
             body: body,
             buttons: [
@@ -65,21 +65,16 @@ const TemplatesBar = {
 
     _showAdd: function() {
         var self = this;
-        var body =
-            '<label>' + I18n.t('Name') + '</label><input id="aiTmplName" class="ai-dialog-input">' +
-            '<label>' + I18n.t('Prompt') + '</label><textarea id="aiTmplPrompt" class="ai-dialog-textarea" rows="4"></textarea>';
+        var body = '<label>' + I18n.t('Name') + '</label><input id="aiTmplName" class="ai-dialog-input"><label>' + I18n.t('Prompt') + '</label><textarea id="aiTmplPrompt" class="ai-dialog-textarea" rows="4"></textarea>';
 
-        DialogStack.show({
+        DialogStack.show('templates-add', {
             title: I18n.t('New Template'),
             body: body,
             buttons: [
                 { text: I18n.t('Confirm'), id: 'aiTmplSave', primary: true, onClick: async function() {
                     var name = document.getElementById('aiTmplName').value.trim();
                     var prompt = document.getElementById('aiTmplPrompt').value.trim();
-                    if (name && prompt) {
-                        await self.add(name, prompt);
-                        DialogStack.close();
-                    }
+                    if (name && prompt) { await self.add(name, prompt); DialogStack.close(); }
                 }},
                 { text: I18n.t('Cancel'), id: 'aiTmplCancel', onClick: function() { DialogStack.close(); } }
             ]
@@ -90,11 +85,9 @@ const TemplatesBar = {
         var self = this;
         var t = this._templates.find(function(t) { return t.id === id; });
         if (!t) return;
-        var body =
-            '<label>' + I18n.t('Name') + '</label><input id="aiTmplName" class="ai-dialog-input" value="' + Utils.escAttr(t.name) + '">' +
-            '<label>' + I18n.t('Prompt') + '</label><textarea id="aiTmplPrompt" class="ai-dialog-textarea" rows="4">' + Utils.esc(t.prompt) + '</textarea>';
+        var body = '<label>' + I18n.t('Name') + '</label><input id="aiTmplName" class="ai-dialog-input" value="' + Utils.escAttr(t.name) + '"><label>' + I18n.t('Prompt') + '</label><textarea id="aiTmplPrompt" class="ai-dialog-textarea" rows="4">' + Utils.esc(t.prompt) + '</textarea>';
 
-        DialogStack.show({
+        DialogStack.show('templates-edit', {
             title: I18n.t('Edit Template'),
             body: body,
             buttons: [

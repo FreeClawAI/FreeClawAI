@@ -38,10 +38,9 @@ const DiffDialog = {
             '</div>';
         });
 
-        body += '</div>' +
-            '<div style="margin-top:8px;color:#666;font-size:12px">' + I18n.t('+{0} -{1}', adds, dels) + '</div>';
+        body += '</div><div style="margin-top:8px;color:#666;font-size:12px">' + I18n.t('+{0} -{1}', adds, dels) + '</div>';
 
-        DialogStack.show({
+        DialogStack.show('diff', {
             title: I18n.t('Diff: {0}', Utils.esc(filename)),
             body: body,
             buttons: [
