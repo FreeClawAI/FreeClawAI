@@ -5,12 +5,22 @@
 #ai-file-panel{position:fixed;top:0;left:0;width:100%;height:100vh;background:white;z-index:999998;display:none;flex-direction:column;font-family:-apple-system,sans-serif;font-size:13px}
 #ai-file-panel.show{display:flex}
 .ai-main{flex:1;display:flex;overflow:hidden}
-.ai-left{width:240px;border-right:1px solid #ddd;display:flex;flex-direction:column;flex-shrink:0;background:#fafafa}
+.ai-left{width:280px;border-right:1px solid #ddd;display:flex;flex-direction:column;flex-shrink:0;background:#fafafa}
 .ai-left-header{display:flex;gap:2px;padding:4px 6px;border-bottom:1px solid #ddd;align-items:center;flex-wrap:wrap}
 .ai-left-header button{padding:3px 6px;border:1px solid #ccc;border-radius:3px;background:white;cursor:pointer;font-size:11px}
 .ai-search{flex:1;min-width:60px;padding:3px 6px;border:1px solid #ccc;border-radius:3px;font-size:11px;outline:none}
 #aiFileList{flex:1;overflow-y:auto}
-.ai-file-item{display:flex;align-items:center;gap:4px;padding:5px 8px;cursor:pointer;font-size:12px;border-bottom:1px solid #eee}
+
+.ai-dir-node{border-bottom:1px solid #eee}
+.ai-dir-header{display:flex;align-items:center;gap:4px;padding:6px 10px;cursor:pointer;background:#f5f5f5;user-select:none;font-size:12px}
+.ai-dir-header:hover{background:#ebebeb}
+.ai-dir-arrow{font-size:10px;width:12px;color:#666}
+.ai-dir-icon{font-size:13px}
+.ai-dir-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
+.ai-dir-count{font-size:11px;color:#999}
+.ai-dir-files{padding-left:0}
+
+.ai-file-item{display:flex;align-items:center;gap:4px;padding:5px 8px 5px 16px;cursor:pointer;font-size:12px;border-bottom:1px solid #eee}
 .ai-file-item:hover{background:#f1f1f1}
 .ai-file-item.active{background:#e3f2fd}
 .ai-file-item input{flex-shrink:0}
@@ -33,6 +43,7 @@
 .ai-bottom{display:flex;gap:6px;padding:5px 8px;border-top:1px solid #ddd;background:#f8f9fa;align-items:center}
 .ai-bottom textarea{flex:1;padding:5px 8px;border:1px solid #ccc;border-radius:4px;font-size:13px;font-family:inherit;resize:none;outline:none;height:30px;line-height:1.4}
 .ai-bottom button{padding:5px 12px;border:none;border-radius:4px;background:#007bff;color:white;cursor:pointer;font-size:12px;height:30px;white-space:nowrap}
+.ai-status-btn{background:transparent!important;border:none!important;padding:3px 6px!important;font-size:14px!important}
 .ai-dialog-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.4);z-index:9999999}
 .ai-dialog{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:white;border-radius:8px;padding:20px;z-index:10000000;min-width:380px;max-width:750px;max-height:80vh;overflow:auto;box-shadow:0 4px 20px rgba(0,0,0,.3)}
 .ai-dialog h3{margin:0 0 10px}
@@ -42,4 +53,3 @@
 .ai-dialog-btns{margin-top:12px;display:flex;gap:6px}
 .ai-dialog-btns button{padding:6px 14px;border:1px solid #ccc;border-radius:4px;background:white;cursor:pointer;font-size:12px}
 .ai-dialog-btns button:hover{background:#f0f0f0}
-.ai-status-btn{background:transparent!important;border:none!important;padding:3px 6px!important;font-size:14px!important}

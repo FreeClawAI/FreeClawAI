@@ -1,4 +1,4 @@
-# FreeClaw
+# FreeClaw(Developing)
 
 **Code AI, Free Forever.**
 
@@ -18,9 +18,9 @@ Grab code from AI chats, save to your local project instantly. Zero API cost. Ze
 4. Click **Load unpacked** → select the extracted folder
 5. Open any supported AI Chat:
    - [DeepSeek](https://chat.deepseek.com)
-   - [ChatGPT](https://chatgpt.com)
-   - [Claude](https://claude.ai)
-   - [Gemini](https://gemini.google.com)
+   - [ChatGPT](https://chatgpt.com) Developing
+   - [Claude](https://claude.ai) Developing
+   - [Gemini](https://gemini.google.com) Developing
 6. Click the 📁 button in the top-right corner
 
 > ✅ No `npm install` | ✅ No `pip install` | ✅ No Docker

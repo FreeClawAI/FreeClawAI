@@ -1,103 +1,177 @@
-// FreeClaw - File tree rendering
+// FreeClaw - File tree rendering with multi-directory support
 const FileTree = {
     _aiFiles: [],
-    _workFiles: [],
+    _workFiles: {},
     _userFiles: [],
+    _activeDir: null,
+    _collapsed: {},
 
     async refresh() {
         this._aiFiles = Extractor.extract();
-        await this._loadWorkFiles();
+        this._activeDir = Config.mainDir;
+        await this._loadAllWorkFiles();
         await this._loadUserFiles();
         this.render();
         this._restoreState();
     },
 
-    async _loadWorkFiles() {
-        try {
-            const r = await fetch(`${Config.serverUrl}/api/files/list?dir=${encodeURIComponent(Config.mainDir)}`);
-            const j = await r.json();
-            this._workFiles = (j.files || []).map(f => ({
-                name: f.name || f, size: f.size || 0, isOriginal: true
-            }));
-        } catch (e) { this._workFiles = []; }
+    async _loadAllWorkFiles() {
+        this._workFiles = {};
+        var dirs = Config.workDirs;
+        for (var i = 0; i < dirs.length; i++) {
+            try {
+                var r = await fetch(Config.serverUrl + '/api/files/list?dir=' + encodeURIComponent(dirs[i]) + '&flat=1');
+                var j = await r.json();
+                this._workFiles[dirs[i]] = (j.files || []).map(function(f) {
+                    return { name: f.name || f, size: f.size || 0, isOriginal: true };
+                });
+            } catch (e) {
+                this._workFiles[dirs[i]] = [];
+            }
+        }
+
+        var aiNames = this._aiFiles.map(function(f) { return f.name; });
+        var allExistingNames = [];
+        for (var d in this._workFiles) {
+            this._workFiles[d].forEach(function(f) {
+                f._hasAi = aiNames.indexOf(f.name) !== -1;
+                allExistingNames.push(f.name);
+            });
+        }
+
+        var mainDir = Config.mainDir;
+        var self = this;
+        this._aiFiles.forEach(function(aiFile) {
+            if (allExistingNames.indexOf(aiFile.name) === -1) {
+                if (!self._workFiles[mainDir]) self._workFiles[mainDir] = [];
+                self._workFiles[mainDir].push({
+                    name: aiFile.name,
+                    content: aiFile.content,
+                    isAi: true,
+                    isNew: true
+                });
+            }
+        });
     },
 
     async _loadUserFiles() {
-        const all = await DB.getAllFiles();
+        var all = await DB.getAllFiles();
         this._userFiles = all
-            .filter(f => f.dir === Config.mainDir && f.type === 'user')
-            .map(f => ({ name: f.name, content: f.content, isUser: true, dbKey: f.key }));
+            .filter(function(f) { return f.type === 'user'; })
+            .map(function(f) { return { name: f.name, content: f.content, isUser: true, dbKey: f.key, dir: f.dir || Config.mainDir }; });
     },
 
     async _restoreState() {
-        const state = await DB.getState();
-        if (state?.selectedFiles) {
-            state.selectedFiles.forEach(name => {
-                const cb = document.querySelector(`.ai-file-item[data-name="${Utils.escAttr(name)}"] input`);
-                if (cb) cb.checked = true;
-            });
-        }
-        if (state?.inputText) document.getElementById('aiInput').value = state.inputText;
+        var state = await DB.getState();
+        if (state && state.inputText) document.getElementById('aiInput').value = state.inputText;
     },
 
     async saveState() {
-        const selected = [];
-        document.querySelectorAll('.ai-file-cb:checked').forEach(cb => {
-            selected.push(cb.closest('.ai-file-item').dataset.name);
-        });
         await DB.saveState({
-            workDir: Config.mainDir,
-            selectedFiles: selected,
+            workDir: this._activeDir,
             inputText: document.getElementById('aiInput').value
         });
     },
 
-    render() {
-        const list = [...this._workFiles, ...this._aiFiles, ...this._userFiles];
-        const search = document.getElementById('aiSearchFiles')?.value?.toLowerCase() || '';
-        const filtered = search ? list.filter(f => f.name.toLowerCase().includes(search)) : list;
+    render: function() {
+        var self = this;
+        var container = document.getElementById('aiFileList');
+        var search = (document.getElementById('aiSearchFiles')?.value || '').toLowerCase();
+        var html = '';
+        var dirs = Config.workDirs;
+        if (!dirs.length) dirs = ['workspace'];
 
-        const container = document.getElementById('aiFileList');
-        let html = '';
-        filtered.forEach((f, i) => {
-            const icon = f.isAi ? '🤖' : (f.isUser ? '✏️' : (f._updated ? '✅' : '📄'));
-            const exists = f.isAi && this._workFiles.some(w => w.name === f.name);
-            const cls = 'ai-file-item' + (exists ? ' ai-exists' : '');
-            const type = f.isAi ? 'ai' : (f.isUser ? 'user' : 'original');
-            html += `<div class="${cls}" data-idx="${i}" data-name="${Utils.escAttr(f.name)}" oncontextmenu="ContextMenu.show(event,'${Utils.escAttr(f.name)}','${type}')">
-                <input type="checkbox" class="ai-file-cb" ${f.isOriginal ? '' : 'checked'}>
-                <span class="ai-file-icon">${icon}</span>
-                <span class="ai-file-name">${Utils.esc(f.name)}</span>
-            </div>`;
+        dirs.forEach(function(dir) {
+            var folderName = dir.split('\\').pop().split('/').pop();
+            var collapsed = self._collapsed[dir] || false;
+            var arrow = collapsed ? '▶' : '▼';
+            var display = collapsed ? 'none' : 'block';
+
+            html += '<div class="ai-dir-node">' +
+                '<div class="ai-dir-header" data-dir="' + Utils.escAttr(dir) + '">' +
+                    '<span class="ai-dir-arrow">' + arrow + '</span>' +
+                    '<span class="ai-dir-icon">📁</span>' +
+                    '<span class="ai-dir-name">' + Utils.esc(folderName) + '</span>' +
+                '</div>' +
+                '<div class="ai-dir-files" style="display:' + display + '">';
+
+            if (!collapsed) {
+                var files = self._workFiles[dir] || [];
+                if (search) {
+                    files = files.filter(function(f) { return f.name.toLowerCase().indexOf(search) !== -1; });
+                }
+
+                files.forEach(function(f) {
+                    var icon = f.isAi ? '🤖' : (f._hasAi ? '🤖' : (f._updated ? '✅' : '📄'));
+                    var type = f.isAi ? 'ai' : 'original';
+                    html += '<div class="ai-file-item" data-name="' + Utils.escAttr(f.name) + '" data-dir="' + Utils.escAttr(dir) + '" oncontextmenu="ContextMenu.show(event,\'' + Utils.escAttr(f.name) + '\',\'' + type + '\')">' +
+                        '<span class="ai-file-icon">' + icon + '</span>' +
+                        '<span class="ai-file-name">' + Utils.esc(f.name) + '</span>' +
+                    '</div>';
+                });
+
+                self._userFiles.forEach(function(uf) {
+                    if (uf.dir === dir || !uf.dir) {
+                        html += '<div class="ai-file-item" data-name="' + Utils.escAttr(uf.name) + '" data-dir="' + Utils.escAttr(dir) + '" oncontextmenu="ContextMenu.show(event,\'' + Utils.escAttr(uf.name) + '\',\'user\')">' +
+                            '<span class="ai-file-icon">✏️</span>' +
+                            '<span class="ai-file-name">' + Utils.esc(uf.name) + '</span>' +
+                        '</div>';
+                    }
+                });
+            }
+
+            html += '</div></div>';
         });
+
         container.innerHTML = html;
 
-        container.querySelectorAll('.ai-file-item').forEach(item => {
-            item.onclick = function(e) {
-                if (e.target.tagName === 'INPUT') { FileTree.saveState(); return; }
-                const name = this.dataset.name;
-                const file = FileTree.getFileByName(name);
-                if (file) {
-                    Preview.show(file);
-                    if (file.isUser) Editor.startEdit(file);
-                    if (file.isOriginal && !file.content) FileTree._loadContent(file);
+        container.querySelectorAll('.ai-dir-header').forEach(function(header) {
+            header.onclick = function() {
+                var dir = this.dataset.dir;
+                var filesDiv = this.nextElementSibling;
+                var arrowEl = this.querySelector('.ai-dir-arrow');
+                if (filesDiv.style.display === 'none') {
+                    filesDiv.style.display = 'block';
+                    arrowEl.textContent = '▼';
+                    self._collapsed[dir] = false;
+                } else {
+                    filesDiv.style.display = 'none';
+                    arrowEl.textContent = '▶';
+                    self._collapsed[dir] = true;
                 }
             };
         });
-        this._updateSelectedInfo();
+
+        container.querySelectorAll('.ai-file-item').forEach(function(item) {
+            item.onclick = function(e) {
+                var name = this.dataset.name;
+                var dir = this.dataset.dir;
+                self._activeDir = dir;
+                var file = self._findFile(name, dir);
+                if (file) {
+                    Preview.show(file);
+                    if (file.isUser) Editor.startEdit(file);
+                    if (file.isOriginal && !file.content) self._loadContent(file, dir);
+                }
+            };
+        });
     },
 
-    getFileByName(name) {
-        return [...this._workFiles, ...this._aiFiles, ...this._userFiles].find(f => f.name === name);
+    _findFile: function(name, dir) {
+        var files = (this._workFiles[dir] || [])
+            .concat(this._aiFiles)
+            .concat(this._userFiles);
+        return files.find(function(f) { return f.name === name; });
     },
 
-    async _loadContent(file) {
+    async _loadContent(file, dir) {
         try {
-            const r = await fetch(`${Config.serverUrl}/api/files/read`, {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ dir: Config.mainDir, filename: file.name })
+            var r = await fetch(Config.serverUrl + '/api/files/read', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ dir: dir, filename: file.name })
             });
-            const j = await r.json();
+            var j = await r.json();
             file.content = j.content;
             file.md5 = j.md5;
             Preview.show(file);
@@ -106,39 +180,36 @@ const FileTree = {
         }
     },
 
-    _updateSelectedInfo() {
-        const info = document.getElementById('aiSelectedInfo');
-        const checked = document.querySelectorAll('.ai-file-cb:checked');
-        if (!checked.length) { info.innerHTML = ''; return; }
-        const names = [];
-        checked.forEach(cb => names.push(cb.closest('.ai-file-item').dataset.name));
-        info.innerHTML = I18n.t('file.selected', names.map(n => Utils.esc(n)).join(', '));
-    },
-
-    getSelectedFiles() {
-        const result = [];
-        document.querySelectorAll('.ai-file-cb:checked').forEach(cb => {
-            const name = cb.closest('.ai-file-item').dataset.name;
-            const f = this.getFileByName(name);
-            if (f) result.push(f);
+    getSelectedFiles: function() {
+        var result = [];
+        this._aiFiles.forEach(function(f) {
+            f._dir = Config.mainDir;
+            result.push(f);
         });
         return result;
     },
 
-    removeAiFile(name) {
-        this._aiFiles = this._aiFiles.filter(f => f.name !== name);
-        const wf = this._workFiles.find(f => f.name === name);
-        if (wf) wf._updated = true;
+    getFileByName: function(name) {
+        var dirs = Config.workDirs;
+        for (var i = 0; i < dirs.length; i++) {
+            var f = this._findFile(name, dirs[i]);
+            if (f) return f;
+        }
+        return null;
+    },
+
+    removeAiFile: function(name) {
+        this._aiFiles = this._aiFiles.filter(function(f) { return f.name !== name; });
         this.render();
     },
 
-    removeUserFile(name) {
-        this._userFiles = this._userFiles.filter(f => f.name !== name);
+    removeUserFile: function(name) {
+        this._userFiles = this._userFiles.filter(function(f) { return f.name !== name; });
         this.render();
     },
 
-    addUserFile(name, content) {
-        this._userFiles.push({ name, content, isUser: true });
+    addUserFile: function(name, content) {
+        this._userFiles.push({ name: name, content: content, isUser: true });
         this.render();
     }
 };
