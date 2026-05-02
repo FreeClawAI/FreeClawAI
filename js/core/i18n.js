@@ -82,7 +82,19 @@ var I18N_ZH = {
     'Folder name:': '文件夹名:',
     'File name:': '文件名:',
     'Template name:': '模板名称:',
-    'Enter new directory path': '输入新目录路径'
+    'Enter new directory path': '输入新目录路径',
+    'Desktop': '桌面',
+    'Documents': '文档',
+    'Downloads': '下载',
+    'This PC': '此电脑',
+    'Select Folder': '选择文件夹',
+    'Folder:': '文件夹:',
+    'Go': '跳转',
+    'Loading...': '加载中...',
+    'No subfolders': '无子文件夹',
+    'Cannot load folders': '无法加载文件夹',
+    'Confirm': '确认',
+    'Cancel': '取消',
 };
 
 var I18n = {

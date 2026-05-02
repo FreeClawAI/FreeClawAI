@@ -46,8 +46,7 @@ const SettingsDialog = {
             '</div>';
         });
 
-        Dialog.show(
-            '<h3>' + I18n.t('Local File Service') + '</h3>' +
+        var body = 
             '<label>' + I18n.t('Server URL') + '</label>' +
             '<div style="display:flex;gap:6px">' +
                 '<input id="aiCfgServer" class="ai-dialog-input" value="' + Utils.escAttr(currentUrl) + '" style="flex:1">' +
@@ -61,17 +60,24 @@ const SettingsDialog = {
             '<div style="margin-top:10px;padding:10px;background:#e7f3ff;border-radius:4px;font-size:12px;color:#0c5460">' +
                 '<strong>💡 ' + I18n.t('Start Local File Service') + '</strong><br>' +
                 I18n.t('Open terminal in the plugin folder, run <code>node server.js</code><br>Or double-click <code>server.bat</code> (Windows)<br>Or run <code>server.sh</code> (Mac/Linux)') +
-            '</div>' +
-            '<div class="ai-dialog-btns" style="justify-content:center">' +
-                '<button id="aiCfgClose">' + I18n.t('Confirm') + '</button>' +
-            '</div>'
-        );
+            '</div>';
 
-        document.getElementById('aiCfgClose').onclick = function() { Dialog.close(); };
+        DialogStack.show({
+            title: I18n.t('Local File Service'),
+            body: body,
+            buttons: [
+                { text: I18n.t('Confirm'), id: 'aiCfgClose', primary: true, onClick: function() { DialogStack.close(); } }
+            ],
+            closeOnOverlay: false,
+            onEsc: false
+        });
+
         document.getElementById('aiCfgTestConn').onclick = function() { self._testConn(); };
         document.getElementById('aiCfgBrowse').onclick = function() {
             DirPicker.show(Config.mainDir, function(selectedPath) {
-                self._addDirByPath(selectedPath);
+                self._addDirByPath(selectedPath).then(function() {
+                    self._render(currentUrl);
+                });
             });
         };
 
@@ -132,7 +138,6 @@ const SettingsDialog = {
                 await Config.save();
                 status.textContent = I18n.t('✅ Added');
                 status.style.color = '#28a745';
-                this._render(url);
             } else {
                 status.textContent = I18n.t('❌ Cannot access this directory');
                 status.style.color = '#dc3545';

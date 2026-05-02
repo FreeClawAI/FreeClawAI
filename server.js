@@ -29,20 +29,22 @@ function listFiles(dir, flat) {
     const items = fs.readdirSync(workDir, { withFileTypes: true });
     items.forEach(function(item) {
         if (item.isDirectory()) {
+            result.push({ name: item.name, isDir: true });
             if (!flat) walk(path.join(workDir, item.name), item.name + '/');
         } else {
             const st = fs.statSync(path.join(workDir, item.name));
-            result.push({ name: item.name, size: st.size });
+            result.push({ name: item.name, size: st.size, isDir: false });
         }
     });
     function walk(d, prefix) {
         const subItems = fs.readdirSync(d, { withFileTypes: true });
         subItems.forEach(function(item) {
             if (item.isDirectory()) {
+                result.push({ name: prefix + item.name, isDir: true });
                 walk(path.join(d, item.name), prefix + item.name + '/');
             } else {
                 const st = fs.statSync(path.join(d, item.name));
-                result.push({ name: prefix + item.name, size: st.size });
+                result.push({ name: prefix + item.name, size: st.size, isDir: false });
             }
         });
     }
@@ -97,12 +99,28 @@ const server = http.createServer(function(req, res) {
             var data = {};
             if (body) data = JSON.parse(body);
 
-            // Heartbeat
             if (req.url === '/api/ping' && req.method === 'GET') {
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ status: 'ok' }));
-
-            // Validate dirs
+            } else if (req.url === '/api/paths' && req.method === 'GET') {
+                var homeDir = os.homedir();
+                var paths = {
+                    desktop: path.join(homeDir, 'Desktop'),
+                    documents: path.join(homeDir, 'Documents'),
+                    downloads: path.join(homeDir, 'Downloads'),
+                    home: homeDir,
+                    drives: []
+                };
+                if (process.platform === 'win32') {
+                    for (var i = 65; i <= 90; i++) {
+                        var drive = String.fromCharCode(i) + ':\\';
+                        if (fs.existsSync(drive)) paths.drives.push(drive);
+                    }
+                } else {
+                    paths.drives.push('/');
+                }
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify(paths));
             } else if (req.url === '/api/config' && req.method === 'POST') {
                 var dirs = data.dirs || [];
                 var validDirs = [];
@@ -119,16 +137,12 @@ const server = http.createServer(function(req, res) {
                 if (!validDirs.length) validDirs.push(WORKSPACE_DIR);
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ success: true, dirs: validDirs }));
-
-            // List single dir
             } else if (req.url === '/api/files/list' && req.method === 'POST') {
                 var dir = data.dir || '';
                 var flat = data.flat !== false;
                 var files = listFiles(dir, flat);
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ files: files }));
-
-            // Find AI files in dirs
             } else if (req.url === '/api/files/find' && req.method === 'POST') {
                 var searchDirs = data.dirs || [];
                 var aiFiles = data.aiFiles || [];
@@ -145,14 +159,10 @@ const server = http.createServer(function(req, res) {
                 });
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ matches: matches }));
-
-            // Read file
             } else if (req.url === '/api/files/read' && req.method === 'POST') {
                 var result = readFileContent(data.dir, data.filename);
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify(result));
-
-            // Write file
             } else if (req.url === '/api/files/write' && req.method === 'POST') {
                 var result = writeFile(data.dir, data.filename, data.content, { md5: data.md5, force: data.force });
                 if (result.conflict) {
@@ -162,19 +172,14 @@ const server = http.createServer(function(req, res) {
                     res.writeHead(200, { 'Content-Type': 'application/json' });
                     res.end(JSON.stringify(result));
                 }
-
-            // Make dir
             } else if (req.url === '/api/files/mkdir' && req.method === 'POST') {
                 var result = makeDir(data.dir, data.name);
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify(result));
-
-            // Delete file
             } else if (req.url === '/api/files/delete' && req.method === 'POST') {
                 var result = deleteFile(data.dir, data.filename);
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify(result));
-
             } else {
                 res.writeHead(404);
                 res.end('Not found');

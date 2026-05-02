@@ -36,22 +36,25 @@ const TemplatesBar = {
 
     _showManage: function() {
         var self = this;
-        var html = '<h3>' + I18n.t('Templates') + '</h3><div style="max-height:350px;overflow:auto">';
+        var body = '<div style="max-height:350px;overflow:auto">';
         this._templates.forEach(function(t) {
-            html += '<div style="display:flex;align-items:center;padding:6px 0;border-bottom:1px solid #eee">' +
+            body += '<div style="display:flex;align-items:center;padding:6px 0;border-bottom:1px solid #eee">' +
                 '<span style="flex:1"><strong>' + Utils.esc(t.name) + '</strong><br><small>' + Utils.esc(t.prompt).substring(0, 80) + '</small></span>' +
                 '<button class="tmpl-edit" data-id="' + t.id + '">' + I18n.t('Edit') + '</button>' +
                 '<button class="tmpl-del" data-id="' + t.id + '">' + I18n.t('Delete') + '</button>' +
             '</div>';
         });
-        html += '</div><div class="ai-dialog-btns">' +
-            '<button id="aiTmplAdd">' + I18n.t('+ New') + '</button>' +
-            '<button id="aiTmplClose">' + I18n.t('Close') + '</button>' +
-        '</div>';
-        Dialog.show(html);
+        body += '</div>';
 
-        document.getElementById('aiTmplClose').onclick = function() { Dialog.close(); };
-        document.getElementById('aiTmplAdd').onclick = function() { self._showAdd(); };
+        DialogStack.show({
+            title: I18n.t('Templates'),
+            body: body,
+            buttons: [
+                { text: I18n.t('+ New'), id: 'aiTmplAdd', onClick: function() { self._showAdd(); } },
+                { text: I18n.t('Close'), id: 'aiTmplClose', onClick: function() { DialogStack.close(); } }
+            ]
+        });
+
         document.querySelectorAll('.tmpl-del').forEach(function(btn) {
             btn.onclick = async function() { await self.remove(this.dataset.id); self._showManage(); };
         });
@@ -62,43 +65,48 @@ const TemplatesBar = {
 
     _showAdd: function() {
         var self = this;
-        Dialog.show(
-            '<h3>' + I18n.t('New Template') + '</h3>' +
+        var body =
             '<label>' + I18n.t('Name') + '</label><input id="aiTmplName" class="ai-dialog-input">' +
-            '<label>' + I18n.t('Prompt') + '</label><textarea id="aiTmplPrompt" class="ai-dialog-textarea" rows="4"></textarea>' +
-            '<div class="ai-dialog-btns">' +
-                '<button id="aiTmplSave">' + I18n.t('Confirm') + '</button>' +
-                '<button id="aiTmplCancel">' + I18n.t('Cancel') + '</button>' +
-            '</div>'
-        );
-        document.getElementById('aiTmplCancel').onclick = function() { Dialog.close(); };
-        document.getElementById('aiTmplSave').onclick = async function() {
-            var name = document.getElementById('aiTmplName').value.trim();
-            var prompt = document.getElementById('aiTmplPrompt').value.trim();
-            if (name && prompt) { await self.add(name, prompt); Dialog.close(); }
-        };
+            '<label>' + I18n.t('Prompt') + '</label><textarea id="aiTmplPrompt" class="ai-dialog-textarea" rows="4"></textarea>';
+
+        DialogStack.show({
+            title: I18n.t('New Template'),
+            body: body,
+            buttons: [
+                { text: I18n.t('Confirm'), id: 'aiTmplSave', primary: true, onClick: async function() {
+                    var name = document.getElementById('aiTmplName').value.trim();
+                    var prompt = document.getElementById('aiTmplPrompt').value.trim();
+                    if (name && prompt) {
+                        await self.add(name, prompt);
+                        DialogStack.close();
+                    }
+                }},
+                { text: I18n.t('Cancel'), id: 'aiTmplCancel', onClick: function() { DialogStack.close(); } }
+            ]
+        });
     },
 
     _showEdit: function(id) {
         var self = this;
         var t = this._templates.find(function(t) { return t.id === id; });
         if (!t) return;
-        Dialog.show(
-            '<h3>' + I18n.t('Edit Template') + '</h3>' +
+        var body =
             '<label>' + I18n.t('Name') + '</label><input id="aiTmplName" class="ai-dialog-input" value="' + Utils.escAttr(t.name) + '">' +
-            '<label>' + I18n.t('Prompt') + '</label><textarea id="aiTmplPrompt" class="ai-dialog-textarea" rows="4">' + Utils.esc(t.prompt) + '</textarea>' +
-            '<div class="ai-dialog-btns">' +
-                '<button id="aiTmplUpdate">' + I18n.t('Confirm') + '</button>' +
-                '<button id="aiTmplCancel">' + I18n.t('Cancel') + '</button>' +
-            '</div>'
-        );
-        document.getElementById('aiTmplCancel').onclick = function() { Dialog.close(); };
-        document.getElementById('aiTmplUpdate').onclick = async function() {
-            t.name = document.getElementById('aiTmplName').value.trim();
-            t.prompt = document.getElementById('aiTmplPrompt').value.trim();
-            await DB.saveTemplates(self._templates);
-            Dialog.close();
-            self._showManage();
-        };
+            '<label>' + I18n.t('Prompt') + '</label><textarea id="aiTmplPrompt" class="ai-dialog-textarea" rows="4">' + Utils.esc(t.prompt) + '</textarea>';
+
+        DialogStack.show({
+            title: I18n.t('Edit Template'),
+            body: body,
+            buttons: [
+                { text: I18n.t('Confirm'), id: 'aiTmplUpdate', primary: true, onClick: async function() {
+                    t.name = document.getElementById('aiTmplName').value.trim();
+                    t.prompt = document.getElementById('aiTmplPrompt').value.trim();
+                    await DB.saveTemplates(self._templates);
+                    DialogStack.close();
+                    self._showManage();
+                }},
+                { text: I18n.t('Cancel'), id: 'aiTmplCancel', onClick: function() { DialogStack.close(); } }
+            ]
+        });
     }
 };

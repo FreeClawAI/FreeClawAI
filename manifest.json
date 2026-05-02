@@ -32,7 +32,7 @@
       "js/services/saver.js",
       "js/services/sender.js",
       "js/services/formatter.js",
-      "js/ui/dialog.js",
+      "js/ui/dialog-stack.js",
       "js/ui/toast.js",
       "js/ui/panel.js",
       "js/ui/preview.js",

@@ -68,6 +68,6 @@ const Panel = {
         this.el.classList.remove('show');
         this.overlay.classList.remove('show');
         this.btn.classList.remove('hidden');
-        Dialog.close();
+        DialogStack.closeAll();
     }
 };

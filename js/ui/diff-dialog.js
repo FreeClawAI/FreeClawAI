@@ -21,7 +21,7 @@ const DiffDialog = {
         var adds = diff.filter(function(d) { return d.type === 'add'; }).length;
         var dels = diff.filter(function(d) { return d.type === 'del'; }).length;
 
-        var html = '<h3>' + I18n.t('Diff: {0}', Utils.esc(filename)) + '</h3>' +
+        var body =
             '<div style="display:flex;gap:8px;margin-bottom:8px;font-size:12px">' +
                 '<div style="flex:1"><strong>📄 ' + I18n.t('Original') + '</strong> (' + origLines.length + ')</div>' +
                 '<div style="flex:1"><strong>🤖 ' + I18n.t('AI') + '</strong> (' + modLines.length + ')</div>' +
@@ -31,27 +31,28 @@ const DiffDialog = {
         diff.forEach(function(d) {
             var bg = d.type === 'add' ? '#e6ffe6' : d.type === 'del' ? '#ffe6e6' : 'transparent';
             var sign = d.type === 'add' ? '+' : d.type === 'del' ? '-' : ' ';
-            html += '<div style="display:flex;background:' + bg + '">' +
+            body += '<div style="display:flex;background:' + bg + '">' +
                 '<div style="width:40px;text-align:right;color:#999;padding:1px 6px;flex-shrink:0">' + (d.oldLine || '') + '</div>' +
                 '<div style="width:40px;text-align:right;color:#999;padding:1px 6px;flex-shrink:0">' + (d.newLine || '') + '</div>' +
                 '<div style="flex:1;padding:1px 6px">' + sign + ' ' + Utils.esc(d.text) + '</div>' +
             '</div>';
         });
 
-        html += '</div>' +
-            '<div style="margin-top:8px;color:#666;font-size:12px">' + I18n.t('+{0} -{1}', adds, dels) + '</div>' +
-            '<div class="ai-dialog-btns">' +
-                '<button id="aiDiffConfirm">' + I18n.t('Confirm Overwrite') + '</button>' +
-                '<button id="aiDiffCancel">' + I18n.t('Cancel') + '</button>' +
-            '</div>';
-        Dialog.show(html);
+        body += '</div>' +
+            '<div style="margin-top:8px;color:#666;font-size:12px">' + I18n.t('+{0} -{1}', adds, dels) + '</div>';
 
-        document.getElementById('aiDiffCancel').onclick = function() { Dialog.close(); };
-        document.getElementById('aiDiffConfirm').onclick = function() {
-            Dialog.close();
-            var aiFiles = FileService.getAiFiles().filter(function(f) { return f.name === filename; });
-            if (aiFiles.length > 0) Saver._batchSave(aiFiles);
-        };
+        DialogStack.show({
+            title: I18n.t('Diff: {0}', Utils.esc(filename)),
+            body: body,
+            buttons: [
+                { text: I18n.t('Confirm Overwrite'), id: 'aiDiffConfirm', primary: true, onClick: function() {
+                    DialogStack.close();
+                    var aiFiles = FileService.getAiFiles().filter(function(f) { return f.name === filename; });
+                    if (aiFiles.length > 0) Saver._batchSave(aiFiles);
+                }},
+                { text: I18n.t('Cancel'), id: 'aiDiffCancel', onClick: function() { DialogStack.close(); } }
+            ]
+        });
     },
 
     _simpleDiff: function(oldLines, newLines) {
