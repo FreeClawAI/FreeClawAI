@@ -1,7 +1,5 @@
-// FreeClaw - File tree UI rendering
+// FreeClaw - File tree UI rendering (lazy loading)
 const FileTree = {
-    _collapsed: {},
-
     async refresh() {
         await FileService.refresh();
         this.render();
@@ -10,7 +8,9 @@ const FileTree = {
 
     async _restoreState() {
         var state = await DB.getState();
-        if (state && state.inputText) document.getElementById('aiInput').value = state.inputText;
+        if (state && state.inputText) {
+            document.getElementById('aiInput').value = state.inputText;
+        }
     },
 
     async saveState() {
@@ -21,110 +21,178 @@ const FileTree = {
     },
 
     render: function() {
-        var self = this;
         var container = document.getElementById('aiFileList');
-        var search = (document.getElementById('aiSearchFiles')?.value || '').toLowerCase();
+        if (!container) {
+            return;
+        }
         var html = '';
-        var dirs = FileService.getAllDirs();
-
+        var dirs = FileService.getRootDirs();
+        var self = this;
         dirs.forEach(function(dir) {
-            var folderName = dir.split('\\').pop().split('/').pop();
-            var collapsed = self._collapsed[dir] !== false;
-            var arrow = collapsed ? '▶' : '▼';
-            var display = collapsed ? 'none' : 'block';
+            var node = FileService.getTree(dir);
+            if (!node) {
+                return;
+            }
+            html += self._renderTree(dir, node, 0);
+        });
+        container.innerHTML = html || '<div style="text-align:center;color:#999;padding:20px">' + I18n.t('Click a file to view') + '</div>';
+    },
 
-            html += '<div class="ai-dir-node">' +
-                '<div class="ai-dir-header" data-dir="' + Utils.escAttr(dir) + '">' +
-                    '<span class="ai-dir-arrow">' + arrow + '</span>' +
-                    '<span class="ai-dir-icon">📁</span>' +
-                    '<span class="ai-dir-name">' + Utils.esc(folderName) + '</span>' +
-                '</div>' +
-                '<div class="ai-dir-files" style="display:' + display + '">';
+    _renderTree: function(dir, node, depth) {
+        var self = this;
+        var indent = depth * 16;
+        var collapsed = !node._expanded;
+        var arrow = collapsed ? '▶' : '▼';
+        var display = collapsed ? 'none' : 'block';
 
-            if (!collapsed) {
-                var files = FileService.getFilesForDir(dir);
-                if (search) {
-                    files = files.filter(function(f) { return f.name.toLowerCase().indexOf(search) !== -1; });
+        var html = '<div class="ai-tree-folder" data-dir="' + Utils.escAttr(dir) + '" style="padding-left:' + indent + 'px">' +
+            '<span class="ai-tree-arrow">' + arrow + '</span>' +
+            '<span class="ai-tree-icon">📁</span>' +
+            '<span class="ai-tree-name">' + Utils.esc(node.name) + '</span>' +
+            '</div>';
+        html += '<div class="ai-tree-children" style="display:' + display + '">';
+        if (!collapsed && node.children) {
+            node.children.forEach(function(child) {
+                if (child.type === 'dir') {
+                    var childDir = dir.replace(/\\/g, '/').replace(/\/$/, '') + '/' + child.name;
+                    var childNode = FileService.getTree(childDir);
+                    if (childNode) {
+                        html += self._renderTree(childDir, childNode, depth + 1);
+                    } else {
+                        html += '<div class="ai-tree-folder" data-dir="' + Utils.escAttr(childDir) + '" style="padding-left:' + (indent + 16) + 'px">' +
+                            '<span class="ai-tree-arrow">▶</span><span class="ai-tree-icon">📁</span>' + Utils.esc(child.name) +
+                            '</div><div class="ai-tree-children" style="display:none"></div>';
+                    }
+                } else {
+                    var icon = child.isAi ? '🤖' : (child.isUser ? '✏️' : (child._hasAi ? '🤖' : ''));
+                    var cls = 'ai-tree-file';
+                    if (child.isAi) {
+                        cls += ' ai-ai-file';
+                    } else if (child._hasAi) {
+                        cls += ' ai-has-ai';
+                    }
+                    html += '<div class="' + cls + '" data-name="' + Utils.escAttr(child.name) + '" data-dir="' + Utils.escAttr(dir) + '" style="padding-left:' + (indent + 16) + 'px">' +
+                        (icon ? '<span class="ai-tree-icon">' + icon + '</span>' : '') +
+                        '<span class="ai-tree-name"' + (icon ? '' : ' style="padding-left:20px"') + '>' + Utils.esc(child.name) + '</span>' +
+                        '</div>';
+                }
+            });
+        }
+        html += '</div>';
+        return html;
+    },
+
+    initEvents: function() {
+        var container = document.getElementById('aiFileList');
+        if (!container || container._eventsBound) {
+            return;
+        }
+        container._eventsBound = true;
+        var self = this;
+
+        container.addEventListener('click', async function(e) {
+            var folder = e.target.closest('.ai-tree-folder');
+            if (folder) {
+                e.stopPropagation();
+                var dir = folder.dataset.dir;
+                var childrenDiv = folder.nextElementSibling;
+                if (!childrenDiv || !childrenDiv.classList.contains('ai-tree-children')) {
+                    return;
                 }
 
-                files.forEach(function(f) {
-                    var icon = '';
-                    var type = 'original';
-                    if (f.isAi) {
-                        icon = '🤖';
-                        type = 'ai';
-                    } else if (f._hasAi) {
-                        icon = '🤖';
-                        type = 'ai';
+                if (childrenDiv.style.display === 'none' || !childrenDiv.style.display) {
+                    if (!FileService.isDirLoaded(dir)) {
+                        await FileService.loadDir(dir);
                     }
-
-                    html += '<div class="ai-file-item" data-name="' + Utils.escAttr(f.name) + '" data-dir="' + Utils.escAttr(dir) + '" oncontextmenu="ContextMenu.show(event,\'' + Utils.escAttr(f.name) + '\',\'' + type + '\')">' +
-                        (icon ? '<span class="ai-file-icon">' + icon + '</span>' : '') +
-                        '<span class="ai-file-name"' + (icon ? '' : ' style="padding-left:20px"') + '>' + Utils.esc(f.name) + '</span>' +
-                    '</div>';
-                });
-
-                FileService.getUserFiles().forEach(function(uf) {
-                    if (uf.dir === dir || !uf.dir) {
-                        html += '<div class="ai-file-item" data-name="' + Utils.escAttr(uf.name) + '" data-dir="' + Utils.escAttr(dir) + '" oncontextmenu="ContextMenu.show(event,\'' + Utils.escAttr(uf.name) + '\',\'user\')">' +
-                            '<span class="ai-file-icon">✏️</span>' +
-                            '<span class="ai-file-name">' + Utils.esc(uf.name) + '</span>' +
-                        '</div>';
+                    var node = FileService.getTree(dir);
+                    if (node && node.children) {
+                        var html = '';
+                        var parentIndent = parseInt(folder.style.paddingLeft || 0);
+                        node.children.forEach(function(child) {
+                            if (child.type === 'dir') {
+                                var childDir = dir.replace(/\\/g, '/').replace(/\/$/, '') + '/' + child.name;
+                                html += '<div class="ai-tree-folder" data-dir="' + Utils.escAttr(childDir) + '" style="padding-left:' + (parentIndent + 16) + 'px">' +
+                                    '<span class="ai-tree-arrow">▶</span><span class="ai-tree-icon">📁</span>' + Utils.esc(child.name) +
+                                    '</div><div class="ai-tree-children" style="display:none"></div>';
+                            } else {
+                                var icon = child.isAi ? '🤖' : (child.isUser ? '✏️' : (child._hasAi ? '🤖' : ''));
+                                html += '<div class="ai-tree-file" data-name="' + Utils.escAttr(child.name) + '" data-dir="' + Utils.escAttr(dir) + '" style="padding-left:' + (parentIndent + 16) + 'px">' +
+                                    (icon ? '<span class="ai-tree-icon">' + icon + '</span>' : '') +
+                                    '<span class="ai-tree-name"' + (icon ? '' : ' style="padding-left:20px"') + '>' + Utils.esc(child.name) + '</span>' +
+                                    '</div>';
+                            }
+                        });
+                        childrenDiv.innerHTML = html;
                     }
-                });
+                    childrenDiv.style.display = 'block';
+                    var arrow = folder.querySelector('.ai-tree-arrow');
+                    if (arrow) {
+                        arrow.textContent = '▼';
+                    }
+                } else {
+                    childrenDiv.style.display = 'none';
+                    var arrow = folder.querySelector('.ai-tree-arrow');
+                    if (arrow) {
+                        arrow.textContent = '▶';
+                    }
+                }
+                return;
             }
 
-            html += '</div></div>';
-        });
-
-        container.innerHTML = html;
-
-        container.querySelectorAll('.ai-dir-header').forEach(function(header) {
-            header.onclick = async function() {
-                var dir = this.dataset.dir;
-                var filesDiv = this.nextElementSibling;
-                var arrowEl = this.querySelector('.ai-dir-arrow');
-
-                if (filesDiv.style.display === 'none') {
-                    await FileService.loadDir(dir);
-                    self._collapsed[dir] = false;
-                    self.render();
-                } else {
-                    filesDiv.style.display = 'none';
-                    arrowEl.textContent = '▶';
-                    self._collapsed[dir] = true;
+            var fileEl = e.target.closest('.ai-tree-file');
+            if (fileEl) {
+                var fileName = fileEl.dataset.name;
+                var fileDir = fileEl.dataset.dir;
+                if (fileDir) {
+                    FileService.setActiveDir(fileDir);
                 }
-            };
-        });
-
-        container.querySelectorAll('.ai-file-item').forEach(function(item) {
-            item.onclick = function(e) {
-                var name = this.dataset.name;
-                var dir = this.dataset.dir;
-                FileService.setActiveDir(dir);
-                var file = FileService.findFile(name, dir);
+                var file = FileService.getFileByName(fileName);
                 if (file) {
                     Preview.show(file);
-                    if (file.isUser) Editor.startEdit(file);
-                    if (file.isOriginal && !file.content) self._loadContent(file, dir);
+                    if (file.isUser) {
+                        Editor.startEdit(file);
+                    }
+                    if (!file.content && !file.isAi && !file.isUser) {
+                        self._loadContent(file);
+                    }
                 }
-            };
+                return;
+            }
+        });
+
+        container.addEventListener('contextmenu', function(e) {
+            var target = e.target.closest('.ai-tree-file');
+            if (!target) {
+                return;
+            }
+            e.preventDefault();
+            var name = target.dataset.name;
+            var file = FileService.getFileByName(name);
+            var type = file ? (file.isAi ? 'ai' : (file.isUser ? 'user' : 'original')) : 'original';
+            ContextMenu.show(e, name, type);
         });
     },
 
-    async _loadContent(file, dir) {
+    async _loadContent(file) {
         try {
+            var dir = Config.mainDir;
             var r = await fetch(Config.serverUrl + '/api/files/read', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ dir: dir, filename: file.name })
+                body: JSON.stringify({
+                    dir: dir,
+                    filename: file.name
+                })
             });
             var j = await r.json();
             file.content = j.content;
             file.md5 = j.md5;
             Preview.show(file);
         } catch (e) {
-            Preview.show({ name: file.name, content: I18n.t('toast.unableRead') });
+            Preview.show({
+                name: file.name,
+                content: I18n.t('[Unable to read file]')
+            });
         }
     },
 

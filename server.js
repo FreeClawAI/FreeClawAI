@@ -34,40 +34,31 @@ function normalizeDir(dir) {
 function listFiles(dir, flat) {
     var workDir = normalizeDir(dir);
     if (!fs.existsSync(workDir)) return [];
-
     const result = [];
     var items;
-    try {
-        items = fs.readdirSync(workDir, { withFileTypes: true });
-    } catch (e) {
-        return [];
-    }
+    try { items = fs.readdirSync(workDir, { withFileTypes: true }); } catch (e) { return []; }
     items.forEach(function(item) {
         try {
+            var st = fs.statSync(path.join(workDir, item.name));
             if (item.isDirectory()) {
-                result.push({ name: item.name, isDir: true });
+                result.push({ name: item.name, isDir: true, mtime: st.mtimeMs });
                 if (!flat) walk(path.join(workDir, item.name), item.name + '/');
             } else {
-                var st = fs.statSync(path.join(workDir, item.name));
-                result.push({ name: item.name, size: st.size, isDir: false });
+                result.push({ name: item.name, size: st.size, isDir: false, mtime: st.mtimeMs });
             }
         } catch (e) {}
     });
     function walk(d, prefix) {
         var subItems;
-        try {
-            subItems = fs.readdirSync(d, { withFileTypes: true });
-        } catch (e) {
-            return;
-        }
+        try { subItems = fs.readdirSync(d, { withFileTypes: true }); } catch (e) { return; }
         subItems.forEach(function(item) {
             try {
+                var st = fs.statSync(path.join(d, item.name));
                 if (item.isDirectory()) {
-                    result.push({ name: prefix + item.name, isDir: true });
+                    result.push({ name: prefix + item.name, isDir: true, mtime: st.mtimeMs });
                     walk(path.join(d, item.name), prefix + item.name + '/');
                 } else {
-                    var st = fs.statSync(path.join(d, item.name));
-                    result.push({ name: prefix + item.name, size: st.size, isDir: false });
+                    result.push({ name: prefix + item.name, size: st.size, isDir: false, mtime: st.mtimeMs });
                 }
             } catch (e) {}
         });
@@ -128,21 +119,10 @@ const server = http.createServer(function(req, res) {
                 res.end(JSON.stringify({ status: 'ok' }));
             } else if (req.url === '/api/paths' && req.method === 'GET') {
                 var homeDir = os.homedir();
-                var paths = {
-                    desktop: path.join(homeDir, 'Desktop'),
-                    documents: path.join(homeDir, 'Documents'),
-                    downloads: path.join(homeDir, 'Downloads'),
-                    home: homeDir,
-                    drives: []
-                };
+                var paths = { desktop: path.join(homeDir, 'Desktop'), documents: path.join(homeDir, 'Documents'), downloads: path.join(homeDir, 'Downloads'), home: homeDir, drives: [] };
                 if (process.platform === 'win32') {
-                    for (var i = 65; i <= 90; i++) {
-                        var drive = String.fromCharCode(i) + ':\\';
-                        if (fs.existsSync(drive)) paths.drives.push(drive);
-                    }
-                } else {
-                    paths.drives.push('/');
-                }
+                    for (var i = 65; i <= 90; i++) { var drive = String.fromCharCode(i) + ':\\'; if (fs.existsSync(drive)) paths.drives.push(drive); }
+                } else { paths.drives.push('/'); }
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify(paths));
             } else if (req.url === '/api/config' && req.method === 'POST') {
@@ -153,8 +133,7 @@ const server = http.createServer(function(req, res) {
                     try {
                         if (!fs.existsSync(resolved)) fs.mkdirSync(resolved, { recursive: true });
                         var testFile = path.join(resolved, '.freeclaw_test');
-                        fs.writeFileSync(testFile, 'test');
-                        fs.unlinkSync(testFile);
+                        fs.writeFileSync(testFile, 'test'); fs.unlinkSync(testFile);
                         validDirs.push(resolved);
                     } catch (e) {}
                 });
@@ -167,18 +146,38 @@ const server = http.createServer(function(req, res) {
                 var files = listFiles(dir, flat);
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ files: files }));
+            } else if (req.url === '/api/files/batch' && req.method === 'POST') {
+                var dirs = data.dirs || [];
+                var flat = data.flat !== false;
+                var results = {};
+                dirs.forEach(function(d) { results[d] = listFiles(d, flat); });
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ results: results }));
             } else if (req.url === '/api/files/find' && req.method === 'POST') {
                 var searchDirs = data.dirs || [];
                 var aiFiles = data.aiFiles || [];
                 var matches = {};
+                function findFile(rootDir, targetName) {
+                    function walk(currentDir) {
+                        try {
+                            var items = fs.readdirSync(currentDir, { withFileTypes: true });
+                            for (var i = 0; i < items.length; i++) {
+                                if (items[i].isFile() && items[i].name === targetName) return currentDir;
+                                if (items[i].isDirectory()) {
+                                    var result = walk(path.join(currentDir, items[i].name));
+                                    if (result) return result;
+                                }
+                            }
+                        } catch (e) {}
+                        return null;
+                    }
+                    return walk(rootDir);
+                }
                 aiFiles.forEach(function(aiName) {
                     matches[aiName] = null;
                     for (var i = 0; i < searchDirs.length; i++) {
-                        var fp = path.join(searchDirs[i], aiName);
-                        if (fs.existsSync(fp) && fs.statSync(fp).isFile()) {
-                            matches[aiName] = searchDirs[i];
-                            break;
-                        }
+                        var found = findFile(searchDirs[i], aiName);
+                        if (found) { matches[aiName] = found; break; }
                     }
                 });
                 res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -189,13 +188,8 @@ const server = http.createServer(function(req, res) {
                 res.end(JSON.stringify(result));
             } else if (req.url === '/api/files/write' && req.method === 'POST') {
                 var result = writeFile(data.dir, data.filename, data.content, { md5: data.md5, force: data.force });
-                if (result.conflict) {
-                    res.writeHead(409, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify({ error: 'File modified', currentMd5: result.currentMd5 }));
-                } else {
-                    res.writeHead(200, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify(result));
-                }
+                if (result.conflict) { res.writeHead(409, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'File modified', currentMd5: result.currentMd5 })); }
+                else { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(result)); }
             } else if (req.url === '/api/files/mkdir' && req.method === 'POST') {
                 var result = makeDir(data.dir, data.name);
                 res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -205,8 +199,7 @@ const server = http.createServer(function(req, res) {
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify(result));
             } else {
-                res.writeHead(404);
-                res.end('Not found');
+                res.writeHead(404); res.end('Not found');
             }
         } catch (e) {
             console.error('Server error:', e.message);

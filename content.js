@@ -6,7 +6,6 @@ var FreeClawFirstRun = true;
     Formatter.load();
     Panel.init();
 
-    // Bind config button immediately (before async init)
     document.getElementById('aiConfigBtn').onclick = function() { SettingsDialog.show(); };
 
     DB.open().then(function() {
@@ -26,12 +25,9 @@ var FreeClawFirstRun = true;
             var name = prompt(I18n.t('Folder name:'));
             if (name) {
                 try {
-                    await fetch(Config.serverUrl + '/api/files/mkdir', {
-                        method: 'POST', headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ dir: Config.mainDir, name: name })
-                    });
+                    await fetch(Config.serverUrl + '/api/files/mkdir', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dir: Config.mainDir, name: name }) });
                     Toast.show(I18n.t('Folder: {0}', name));
-                    await FileService._loadAllWorkFiles();
+                    await FileService.loadDir(Config.mainDir);
                     FileTree.render();
                 } catch (e) { Toast.show(I18n.t('Failed: {0}', name), 'error'); }
             }
@@ -58,13 +54,8 @@ var FreeClawFirstRun = true;
         function updateStatusLight(connected) {
             var btn = document.getElementById('aiConfigBtn');
             if (btn) {
-                if (connected) {
-                    btn.textContent = '🔗';
-                    btn.title = I18n.t('Connected');
-                } else {
-                    btn.textContent = '🔌';
-                    btn.title = I18n.t('Disconnected');
-                }
+                btn.textContent = connected ? '🔗' : '🔌';
+                btn.title = connected ? I18n.t('Connected') : I18n.t('Disconnected');
             }
             if (wasConnected && !connected) {
                 FreeClawFirstRun = false;
@@ -77,9 +68,7 @@ var FreeClawFirstRun = true;
         function heartbeat() {
             var url = Config.serverUrl;
             if (!url) { updateStatusLight(false); return; }
-            fetch(url + '/api/ping')
-                .then(function(r) { updateStatusLight(r.ok); })
-                .catch(function() { updateStatusLight(false); });
+            fetch(url + '/api/ping').then(function(r) { updateStatusLight(r.ok); }).catch(function() { updateStatusLight(false); });
         }
 
         var _origOpen = Panel.open;
@@ -89,36 +78,19 @@ var FreeClawFirstRun = true;
             heartbeatTimer = setInterval(heartbeat, 5000);
 
             var connected = false;
-            try {
-                var r = await fetch(Config.serverUrl + '/api/ping');
-                connected = r.ok;
-            } catch (e) {}
+            try { var r = await fetch(Config.serverUrl + '/api/ping'); connected = r.ok; } catch (e) {}
             updateStatusLight(connected);
 
             if (!connected) {
                 if (FreeClawFirstRun) {
                     FreeClawFirstRun = false;
-                    setTimeout(function() {
-                        SettingsDialog.show();
-                        Toast.show(I18n.t('Cannot connect. Start node server.js'), 'error');
-                    }, 500);
-                } else {
-                    setTimeout(function() {
-                        fetch(Config.serverUrl + '/api/ping')
-                            .then(function(r) {
-                                if (!r.ok) {
-                                    SettingsDialog.show();
-                                    Toast.show(I18n.t('Cannot connect. Start node server.js'), 'error');
-                                }
-                            })
-                            .catch(function() {
-                                SettingsDialog.show();
-                                Toast.show(I18n.t('Cannot connect. Start node server.js'), 'error');
-                            });
-                    }, 3000);
                 }
+                SettingsDialog.show();
+                Toast.show(I18n.t('Cannot connect. Start node server.js'), 'error');
             } else {
+                FreeClawFirstRun = false;
                 await FileTree.refresh();
+                FileTree.initEvents();
                 await PromptsBar.load();
                 TemplatesBar.render();
             }

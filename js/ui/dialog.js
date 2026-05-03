@@ -10,13 +10,12 @@ var DialogStack = {
         if (this._container) return;
         this._overlay = document.getElementById('aiDialogOverlay');
         this._container = document.getElementById('aiDialog');
+        if (!this._overlay || !this._container) return;
     },
 
     _buildHTML: function(opts) {
         var html = '';
-        if (opts.title) {
-            html += '<div class="ai-dialog-header"><h3>' + opts.title + '</h3></div>';
-        }
+        if (opts.title) html += '<div class="ai-dialog-header"><h3>' + opts.title + '</h3></div>';
         html += '<div class="ai-dialog-body">' + (opts.body || '') + '</div>';
         if (opts.buttons && opts.buttons.length > 0) {
             html += '<div class="ai-dialog-footer">';
@@ -36,19 +35,14 @@ var DialogStack = {
         opts.buttons.forEach(function(btn) {
             if (btn.id && btn.onClick) {
                 var el = document.getElementById(btn.id);
-                if (el) {
-                    el.onclick = function(e) {
-                        e.preventDefault();
-                        btn.onClick();
-                    };
-                }
+                if (el) el.onclick = function(e) { e.preventDefault(); btn.onClick(); };
             }
         });
     },
 
-    // Replace current layer content (don't push to stack)
     refresh: function(id, opts) {
         this.init();
+        if (!this._container || !this._overlay) return;
         var div = this._layers[id];
         if (!div) {
             div = document.createElement('div');
@@ -64,18 +58,14 @@ var DialogStack = {
         this._currentId = id;
         this._bindButtons(opts);
         if (opts.onRender) opts.onRender();
-        return this;
     },
 
-    // Push new layer on top, hide current
     show: function(id, opts) {
         this.init();
+        if (!this._container || !this._overlay) return;
         if (this._currentId && this._layers[this._currentId]) {
             this._layers[this._currentId].style.display = 'none';
-            // Only push if different id
-            if (this._currentId !== id) {
-                this._stack.push(this._currentId);
-            }
+            if (this._currentId !== id) this._stack.push(this._currentId);
         }
         var div = this._layers[id];
         if (!div) {
@@ -92,7 +82,6 @@ var DialogStack = {
         this._currentId = id;
         this._bindButtons(opts);
         if (opts.onRender) opts.onRender();
-        return this;
     },
 
     close: function() {
@@ -107,18 +96,18 @@ var DialogStack = {
                 return;
             }
         }
-        this._container.style.display = 'none';
-        this._overlay.style.display = 'none';
+        if (this._overlay) this._overlay.style.display = 'none';
+        if (this._container) this._container.style.display = 'none';
         this._currentId = null;
     },
 
     closeAll: function() {
         this._stack = [];
         for (var key in this._layers) {
-            this._layers[key].style.display = 'none';
+            if (this._layers[key]) this._layers[key].style.display = 'none';
         }
-        this._container.style.display = 'none';
-        this._overlay.style.display = 'none';
+        if (this._overlay) this._overlay.style.display = 'none';
+        if (this._container) this._container.style.display = 'none';
         this._currentId = null;
     }
 };

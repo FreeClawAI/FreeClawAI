@@ -58,3 +58,13 @@
 .ai-picker-body{flex:1;display:flex;min-height:250px;max-height:350px;overflow:hidden}
 .ai-picker-sidebar{width:140px;border-right:1px solid #eee;overflow:auto;background:#fafafa;flex-shrink:0}
 .ai-picker-main{flex:1;overflow:auto}
+.ai-tree-dir{display:flex;align-items:center;gap:4px;padding:4px 8px;cursor:pointer;font-size:12px;user-select:none}
+.ai-tree-dir:hover{background:#f0f0f0}
+.ai-tree-arrow{font-size:10px;width:12px;color:#666;flex-shrink:0}
+.ai-tree-icon{font-size:13px;flex-shrink:0}
+.ai-tree-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.ai-tree-file{display:flex;align-items:center;gap:4px;padding:4px 8px;cursor:pointer;font-size:12px}
+.ai-tree-file:hover{background:#f0f0f0}
+.ai-tree-file.ai-ai-file{background:#fff8e1}
+.ai-tree-file.ai-has-ai{background:#fff8e1}
+.ai-tree-mtime{font-size:10px;color:#999;margin-left:auto;flex-shrink:0;white-space:nowrap}
