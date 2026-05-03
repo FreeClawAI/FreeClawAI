@@ -33,7 +33,6 @@ const Panel = {
                     '<div class="ai-left-header">' +
                         '<input id="aiSearchFiles" class="ai-search" placeholder="' + I18n.t('Search...') + '">' +
                         '<button id="aiRefreshBtn" title="' + I18n.t('Extract AI files') + '">🔍</button>' +
-                        '<button id="aiSaveBtn" title="' + I18n.t('Save selected') + ' (Ctrl+S)">💾</button>' +
                         '<button id="aiMenuBtn" title="' + I18n.t('Menu') + '">☰</button>' +
                     '</div>' +
                     '<div id="aiFileList"></div>' +
@@ -50,6 +49,7 @@ const Panel = {
                         '<button id="aiConfigBtn" title="' + I18n.t('Disconnected') + '" class="ai-status-btn">🔌</button>' +
                         '<textarea id="aiInput" rows="1" placeholder="' + I18n.t('Add message... (Enter)') + '"></textarea>' +
                         '<button id="aiSendBtn">' + I18n.t('Send') + '</button>' +
+                        '<button id="aiSaveBtn2">' + I18n.t('Save') + '</button>' +
                         '<button id="aiClosePanelBtn" style="background:#6c757d">' + I18n.t('Close') + '</button>' +
                     '</div>' +
                 '</div>' +

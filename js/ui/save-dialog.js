@@ -10,6 +10,10 @@ const SaveDialog = {
         }
 
         var workDirs = Config.workDirs || [];
+        if (!workDirs.length) {
+            Toast.show(I18n.t('No work directories configured'), 'error');
+            return;
+        }
         var multiWorkspace = workDirs.length > 1;
 
         function formatSavePath(workDir, name) {
@@ -31,14 +35,40 @@ const SaveDialog = {
             return normalizedWd + '/' + name;
         }
 
+        function isPathInWorkDirs(path) {
+            var normalized = path.replace(/\\/g, '/');
+            for (var i = 0; i < workDirs.length; i++) {
+                var d = workDirs[i].replace(/\\/g, '/');
+                if (normalized.indexOf(d) === 0) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function getWorkDirForPath(path) {
+            var normalized = path.replace(/\\/g, '/');
+            for (var i = 0; i < workDirs.length; i++) {
+                var d = workDirs[i].replace(/\\/g, '/');
+                if (normalized.indexOf(d) === 0) {
+                    return workDirs[i];
+                }
+            }
+            return workDirs[0];
+        }
+
         var fileItems = allFiles.map(function(f) {
             var wd = f.workDir || Config.mainDir;
+            if (!isPathInWorkDirs(wd)) {
+                wd = Config.mainDir;
+            }
             var displayPath = formatSavePath(wd, f.name);
             return {
                 name: f.name,
                 displayPath: displayPath,
                 file: f,
                 path: displayPath,
+                saveDir: wd,
                 size: f.size || (f.content ? f.content.length : 0)
             };
         });
@@ -68,6 +98,7 @@ const SaveDialog = {
         html += '<div style="padding:8px 0;border-top:1px solid #eee;display:flex;align-items:center;gap:12px;font-size:12px;color:#666">' +
             '<label style="cursor:pointer"><input type="checkbox" id="aiSaveSelectAll" checked> ' + I18n.t('All') + '</label>' +
             '<span id="aiSaveSelectedCount">' + fileItems.length + ' ' + I18n.t('files selected') + ' / ' + fileItems.length + ' ' + I18n.t('total') + '</span>' +
+            '<span style="font-size:11px;color:#999;margin-left:auto">' + I18n.t('Only work directories can be selected') + '</span>' +
             '</div>';
 
         html += '<div class="ai-dialog-footer">' +
@@ -106,12 +137,17 @@ const SaveDialog = {
                     btn.onclick = function(e) {
                         e.stopPropagation();
                         var index = parseInt(btn.dataset.index);
-                        DirPicker.show(Config.mainDir, function(selectedDir) {
+                        DirPicker.show(fileItems[index].saveDir, function(selectedDir) {
+                            if (!isPathInWorkDirs(selectedDir)) {
+                                Toast.show(I18n.t('Can only save to work directories'), 'error');
+                                return;
+                            }
                             var f = fileItems[index].file;
+                            f._selectedDir = selectedDir;
+                            fileItems[index].saveDir = selectedDir;
                             var newPath = formatSavePath(selectedDir, getShortName(f.name));
                             fileItems[index].path = newPath;
                             fileItems[index].displayPath = newPath;
-                            f._selectedDir = selectedDir;
                             var row = document.querySelector('.ai-save-row[data-index="' + index + '"]');
                             if (row) {
                                 var pathEl = row.querySelector('.ai-save-path');
@@ -131,12 +167,7 @@ const SaveDialog = {
                     checks.forEach(function(c) {
                         var index = parseInt(c.dataset.index);
                         var item = fileItems[index];
-                        var saveDir = item.file._selectedDir || item.file.workDir || Config.mainDir;
-                        if (item.file._selectedDir) {
-                            item.file._savePath = saveDir + '/' + getShortName(item.file.name);
-                        } else {
-                            item.file._savePath = saveDir + '/' + item.file.name;
-                        }
+                        item.file._saveDir = item.saveDir;
                         toSave.push(item.file);
                     });
 
@@ -145,55 +176,11 @@ const SaveDialog = {
                         return;
                     }
 
-                    var conflicted = await SaveDialog._checkConflicts(toSave);
-                    if (conflicted.length > 0) {
-                        var msg = I18n.t('The following files have been modified externally:') + '\n\n';
-                        conflicted.forEach(function(c) {
-                            msg += '📄 ' + c.name + '\n';
-                        });
-                        msg += '\n' + I18n.t('Do you want to overwrite?');
-                        if (!confirm(msg)) return;
-                    }
-
                     DialogStack.close();
                     await SaveDialog._doSave(toSave);
                 };
             }
         });
-    },
-
-    _checkConflicts: async function(files) {
-        var conflicted = [];
-        for (var i = 0; i < files.length; i++) {
-            var f = files[i];
-            var savePath = f._savePath || (f.workDir + '/' + f.name);
-            var lastSlash = savePath.lastIndexOf('/');
-            var dir = savePath.substring(0, lastSlash);
-            var filename = savePath.substring(lastSlash + 1);
-
-            try {
-                var r = await fetch(Config.serverUrl + '/api/files/list', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ dir: dir, flat: true })
-                });
-                var j = await r.json();
-                var listFiles = j.files || [];
-                var existing = null;
-                for (var k = 0; k < listFiles.length; k++) {
-                    if (listFiles[k].name === filename && !listFiles[k].isDir) {
-                        existing = listFiles[k];
-                        break;
-                    }
-                }
-                if (existing && f._origSize != null && f._origMtime != null) {
-                    if (existing.size !== f._origSize || existing.mtime !== f._origMtime) {
-                        conflicted.push({ name: filename, origSize: f._origSize, newSize: existing.size });
-                    }
-                }
-            } catch (e) {}
-        }
-        return conflicted;
     },
 
     _doSave: async function(files) {
@@ -215,12 +202,10 @@ const SaveDialog = {
     },
 
     _saveOne: async function(file) {
-        var savePath = file._savePath || (file.workDir + '/' + file.name);
-        var lastSlash = savePath.lastIndexOf('/');
-        var dir = savePath.substring(0, lastSlash);
-        var filename = savePath.substring(lastSlash + 1);
+        var saveDir = file._saveDir || file.workDir || Config.mainDir;
+        var filename = getShortName(file.name);
 
-        var body = { dir: dir, filename: filename, content: file.content };
+        var body = { dir: saveDir, filename: filename, content: file.content };
 
         var r = await fetch(Config.serverUrl + '/api/files/write', {
             method: 'POST',
@@ -234,7 +219,39 @@ const SaveDialog = {
             throw new Error(result.error || 'Write failed');
         }
 
-        Config.lastSaveDir = dir;
+        Config.lastSaveDir = saveDir;
+    },
+
+    _checkConflicts: async function(files) {
+        var conflicted = [];
+        for (var i = 0; i < files.length; i++) {
+            var f = files[i];
+            var saveDir = f._saveDir || f.workDir || Config.mainDir;
+            var filename = getShortName(f.name);
+
+            try {
+                var r = await fetch(Config.serverUrl + '/api/files/list', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ dir: saveDir, flat: true })
+                });
+                var j = await r.json();
+                var listFiles = j.files || [];
+                var existing = null;
+                for (var k = 0; k < listFiles.length; k++) {
+                    if (listFiles[k].name === filename && !listFiles[k].isDir) {
+                        existing = listFiles[k];
+                        break;
+                    }
+                }
+                if (existing && f._origSize != null && f._origMtime != null) {
+                    if (existing.size !== f._origSize || existing.mtime !== f._origMtime) {
+                        conflicted.push({ name: filename, origSize: f._origSize, newSize: existing.size });
+                    }
+                }
+            } catch (e) {}
+        }
+        return conflicted;
     }
 };
 

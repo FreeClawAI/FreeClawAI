@@ -144,6 +144,34 @@ const FileService = {
             var info = matches[aiFile.name];
 
             if (info && info.content !== undefined) {
+                console.log('=== Comparing: ' + aiFile.name + ' ===');
+                console.log('AI content length: ' + (aiFile.content || '').length);
+                console.log('Orig content length: ' + (info.content || '').length);
+                console.log('Strict equal: ' + (aiFile.content === info.content));
+
+                if (aiFile.content !== info.content) {
+                    var aiStr = aiFile.content || '';
+                    var origStr = info.content || '';
+                    var maxLen = Math.max(aiStr.length, origStr.length);
+                    var firstDiff = -1;
+                    for (var c = 0; c < maxLen; c++) {
+                        if (aiStr.charCodeAt(c) !== origStr.charCodeAt(c)) {
+                            firstDiff = c;
+                            break;
+                        }
+                    }
+                    if (firstDiff >= 0) {
+                        console.log('First diff at index: ' + firstDiff);
+                        var start = Math.max(0, firstDiff - 20);
+                        var aiEnd = Math.min(aiStr.length, firstDiff + 30);
+                        var origEnd = Math.min(origStr.length, firstDiff + 30);
+                        console.log('AI nearby: [' + aiStr.charCodeAt(firstDiff) + '] ' + JSON.stringify(aiStr.substring(start, aiEnd)));
+                        console.log('Orig nearby: [' + origStr.charCodeAt(firstDiff) + '] ' + JSON.stringify(origStr.substring(start, origEnd)));
+                    } else if (aiStr.length !== origStr.length) {
+                        console.log('Same prefix but different lengths. AI tail char: ' + aiStr.charCodeAt(aiStr.length - 1) + ' Orig tail char: ' + origStr.charCodeAt(origStr.length - 1));
+                    }
+                }
+
                 if (aiFile.content === info.content) {
                     var matchPath = info.path.replace(/\\/g, '/');
                     var matchDir = matchPath.substring(0, matchPath.lastIndexOf('/'));

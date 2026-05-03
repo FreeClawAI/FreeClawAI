@@ -24,7 +24,7 @@ var FreeClawFirstRun = true;
 
         document.getElementById('aiConfigBtn').onclick = function() { SettingsDialog.show(); };
         document.getElementById('aiRefreshBtn').onclick = function() { FileTree.refresh(); };
-        document.getElementById('aiSaveBtn').onclick = function() { SaveDialog.show(); };
+        document.getElementById('aiSaveBtn2').onclick = function() { SaveDialog.show(); };
         document.getElementById('aiSendBtn').onclick = function() { Sender.send(); };
         document.getElementById('aiClosePanelBtn').onclick = function() { Panel.close(); };
 

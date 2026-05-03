@@ -169,12 +169,11 @@ function writeFile(dir, filename, content, options) {
     const fp = resolvePath(dir, filename);
     const dirPath = path.dirname(fp);
     if (!fs.existsSync(dirPath)) fs.mkdirSync(dirPath, { recursive: true });
-    if (fs.existsSync(fp) && options.md5) {
+    if (fs.existsSync(fp) && options && options.md5) {
         var currentContent = readBinaryFile(fp);
         var currentMd5 = crypto.createHash('md5').update(currentContent).digest('hex');
         if (currentMd5 !== options.md5 && !options.force) return { conflict: true, currentMd5: currentMd5 };
     }
-    if (fs.existsSync(fp) && options.backup !== false) fs.copyFileSync(fp, fp + '.bak');
     writeBinaryFile(fp, content);
     return { success: true, md5: crypto.createHash('md5').update(content).digest('hex') };
 }
