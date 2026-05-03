@@ -46,29 +46,41 @@ const SaveDialog = {
             return false;
         }
 
-        function getWorkDirForPath(path) {
-            var normalized = path.replace(/\\/g, '/');
-            for (var i = 0; i < workDirs.length; i++) {
-                var d = workDirs[i].replace(/\\/g, '/');
-                if (normalized.indexOf(d) === 0) {
-                    return workDirs[i];
-                }
+        function splitFilename(name) {
+            var lastSlash = Math.max(name.lastIndexOf('/'), name.lastIndexOf('\\'));
+            if (lastSlash === -1) {
+                return { dirPart: '', filePart: name };
             }
-            return workDirs[0];
+            return {
+                dirPart: name.substring(0, lastSlash),
+                filePart: name.substring(lastSlash + 1)
+            };
         }
 
         var fileItems = allFiles.map(function(f) {
+            var parts = splitFilename(f.name);
+            var filePart = parts.filePart;
+            var dirPart = parts.dirPart;
+
             var wd = f.workDir || Config.mainDir;
             if (!isPathInWorkDirs(wd)) {
                 wd = Config.mainDir;
             }
-            var displayPath = formatSavePath(wd, f.name);
+
+            var saveDir = wd;
+            if (dirPart) {
+                saveDir = wd.replace(/\\/g, '/').replace(/\/$/, '') + '/' + dirPart;
+            }
+
+            var displayPath = formatSavePath(saveDir, filePart);
             return {
                 name: f.name,
+                filePart: filePart,
+                dirPart: dirPart,
                 displayPath: displayPath,
                 file: f,
                 path: displayPath,
-                saveDir: wd,
+                saveDir: saveDir,
                 size: f.size || (f.content ? f.content.length : 0)
             };
         });
@@ -142,10 +154,9 @@ const SaveDialog = {
                                 Toast.show(I18n.t('Can only save to work directories'), 'error');
                                 return;
                             }
-                            var f = fileItems[index].file;
-                            f._selectedDir = selectedDir;
                             fileItems[index].saveDir = selectedDir;
-                            var newPath = formatSavePath(selectedDir, getShortName(f.name));
+                            fileItems[index].file._saveDir = selectedDir;
+                            var newPath = formatSavePath(selectedDir, fileItems[index].filePart);
                             fileItems[index].path = newPath;
                             fileItems[index].displayPath = newPath;
                             var row = document.querySelector('.ai-save-row[data-index="' + index + '"]');
@@ -167,8 +178,10 @@ const SaveDialog = {
                     checks.forEach(function(c) {
                         var index = parseInt(c.dataset.index);
                         var item = fileItems[index];
-                        item.file._saveDir = item.saveDir;
-                        toSave.push(item.file);
+                        var f = item.file;
+                        f._saveDir = item.saveDir;
+                        f._saveFilePart = item.filePart;
+                        toSave.push(f);
                     });
 
                     if (!toSave.length) {
@@ -189,8 +202,6 @@ const SaveDialog = {
             var f = files[i];
             try {
                 await SaveDialog._saveOne(f);
-                if (f.fileType === 'ai') FileTree.removeAiFile(f.name);
-                if (f.fileType === 'user') FileTree.removeUserFile(f.name);
                 saved++;
             } catch (e) {
                 Toast.show(I18n.t('Failed: {0}', getShortName(f.name)), 'error');
@@ -199,11 +210,12 @@ const SaveDialog = {
         if (saved > 0) Toast.show(I18n.t('Saved {0} files', saved));
         await FileService.refresh();
         FileTree.render();
+        Preview.show(null);
     },
 
     _saveOne: async function(file) {
         var saveDir = file._saveDir || file.workDir || Config.mainDir;
-        var filename = getShortName(file.name);
+        var filename = file._saveFilePart || getShortName(file.name);
 
         var body = { dir: saveDir, filename: filename, content: file.content };
 
@@ -227,7 +239,7 @@ const SaveDialog = {
         for (var i = 0; i < files.length; i++) {
             var f = files[i];
             var saveDir = f._saveDir || f.workDir || Config.mainDir;
-            var filename = getShortName(f.name);
+            var filename = f._saveFilePart || getShortName(f.name);
 
             try {
                 var r = await fetch(Config.serverUrl + '/api/files/list', {

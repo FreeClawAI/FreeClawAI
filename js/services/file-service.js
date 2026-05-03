@@ -1,3 +1,4 @@
+// FreeClaw - File service (tree state + AI <-> original matching)
 function makeFileId(workDir, name, type) {
     return workDir + '|' + name + '|' + type;
 }
@@ -144,35 +145,9 @@ const FileService = {
             var info = matches[aiFile.name];
 
             if (info && info.content !== undefined) {
-                console.log('=== Comparing: ' + aiFile.name + ' ===');
-                console.log('AI content length: ' + (aiFile.content || '').length);
-                console.log('Orig content length: ' + (info.content || '').length);
-                console.log('Strict equal: ' + (aiFile.content === info.content));
-
-                if (aiFile.content !== info.content) {
-                    var aiStr = aiFile.content || '';
-                    var origStr = info.content || '';
-                    var maxLen = Math.max(aiStr.length, origStr.length);
-                    var firstDiff = -1;
-                    for (var c = 0; c < maxLen; c++) {
-                        if (aiStr.charCodeAt(c) !== origStr.charCodeAt(c)) {
-                            firstDiff = c;
-                            break;
-                        }
-                    }
-                    if (firstDiff >= 0) {
-                        console.log('First diff at index: ' + firstDiff);
-                        var start = Math.max(0, firstDiff - 20);
-                        var aiEnd = Math.min(aiStr.length, firstDiff + 30);
-                        var origEnd = Math.min(origStr.length, firstDiff + 30);
-                        console.log('AI nearby: [' + aiStr.charCodeAt(firstDiff) + '] ' + JSON.stringify(aiStr.substring(start, aiEnd)));
-                        console.log('Orig nearby: [' + origStr.charCodeAt(firstDiff) + '] ' + JSON.stringify(origStr.substring(start, origEnd)));
-                    } else if (aiStr.length !== origStr.length) {
-                        console.log('Same prefix but different lengths. AI tail char: ' + aiStr.charCodeAt(aiStr.length - 1) + ' Orig tail char: ' + origStr.charCodeAt(origStr.length - 1));
-                    }
-                }
-
-                if (aiFile.content === info.content) {
+                var aiContent = (aiFile.content || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+                var origContent = (info.content || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+                if (aiContent === origContent) {
                     var matchPath = info.path.replace(/\\/g, '/');
                     var matchDir = matchPath.substring(0, matchPath.lastIndexOf('/'));
                     if (self._tree[matchDir]) {
@@ -190,71 +165,38 @@ const FileService = {
             aiFile.type = 'file';
             aiFile.fileType = 'ai';
             aiFile.size = aiFile.content ? aiFile.content.length : 0;
+            aiFile.workDir = mainDir;
+            aiFile.id = makeFileId(mainDir, aiFile.name, 'ai');
 
             if (info && info.path) {
-                var matchPath = info.path.replace(/\\/g, '/');
-                var matchDir = matchPath.substring(0, matchPath.lastIndexOf('/'));
-                aiFile.workDir = matchDir;
-                aiFile.id = makeFileId(matchDir, aiFile.name, 'ai');
+                aiFile._origPath = info.path;
                 aiFile._origSize = info.size;
                 aiFile._origMtime = info.mtime;
-                self._fileMap[aiFile.id] = aiFile;
+                aiFile._origContent = info.content;
+            } else {
+                aiFile.isNew = true;
+            }
 
-                if (self._tree[matchDir]) {
-                    var exists = false;
-                    for (var i = 0; i < self._tree[matchDir].children.length; i++) {
-                        if (self._tree[matchDir].children[i].fileType === 'ai' && self._tree[matchDir].children[i].name === aiFile.name) {
-                            exists = true;
-                            break;
-                        }
-                    }
-                    if (!exists) {
-                        var insertIndex = self._tree[matchDir].children.length;
-                        for (var i = 0; i < self._tree[matchDir].children.length; i++) {
-                            if (getShortName(self._tree[matchDir].children[i].name) === getShortName(aiFile.name) && self._tree[matchDir].children[i].fileType === 'original') {
-                                insertIndex = i + 1;
-                                self._tree[matchDir].children[i].size = info.size;
-                                break;
-                            }
-                        }
-                        self._tree[matchDir].children.splice(insertIndex, 0, aiFile);
-                    }
-                } else {
-                    aiFile.workDir = mainDir;
-                    aiFile.id = makeFileId(mainDir, aiFile.name, 'ai');
-                    aiFile.isNew = true;
-                    self._fileMap[aiFile.id] = aiFile;
-                    var mainNode = self._tree[mainDir];
-                    if (mainNode) {
-                        var exists = false;
-                        for (var i = 0; i < mainNode.children.length; i++) {
-                            if (mainNode.children[i].fileType === 'ai' && mainNode.children[i].name === aiFile.name) {
-                                exists = true;
-                                break;
-                            }
-                        }
-                        if (!exists) {
-                            mainNode.children.push(aiFile);
-                        }
+            self._fileMap[aiFile.id] = aiFile;
+
+            var mainNode = self._tree[mainDir];
+            if (mainNode) {
+                var exists = false;
+                for (var i = 0; i < mainNode.children.length; i++) {
+                    if (mainNode.children[i].fileType === 'ai' && mainNode.children[i].name === aiFile.name) {
+                        exists = true;
+                        break;
                     }
                 }
-            } else {
-                aiFile.workDir = mainDir;
-                aiFile.id = makeFileId(mainDir, aiFile.name, 'ai');
-                aiFile.isNew = true;
-                self._fileMap[aiFile.id] = aiFile;
-                var mainNode = self._tree[mainDir];
-                if (mainNode) {
-                    var exists = false;
+                if (!exists) {
+                    var insertIndex = mainNode.children.length;
                     for (var i = 0; i < mainNode.children.length; i++) {
-                        if (mainNode.children[i].fileType === 'ai' && mainNode.children[i].name === aiFile.name) {
-                            exists = true;
+                        if (getShortName(mainNode.children[i].name) === getShortName(aiFile.name) && mainNode.children[i].fileType === 'original') {
+                            insertIndex = i + 1;
                             break;
                         }
                     }
-                    if (!exists) {
-                        mainNode.children.push(aiFile);
-                    }
+                    mainNode.children.splice(insertIndex, 0, aiFile);
                 }
             }
         });
@@ -289,6 +231,17 @@ const FileService = {
         return node.children.filter(function(c) {
             return c.type === 'file' && c.fileType === 'original';
         });
+    },
+
+    findFile: function(filename, dir) {
+        var node = this._tree[dir];
+        if (!node || !node.children) return null;
+        for (var i = 0; i < node.children.length; i++) {
+            if (getShortName(node.children[i].name) === getShortName(filename) && node.children[i].type === 'file') {
+                return node.children[i];
+            }
+        }
+        return null;
     },
 
     async _loadUserFiles() {

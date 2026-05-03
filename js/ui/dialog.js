@@ -10,7 +10,22 @@ var DialogStack = {
         if (this._container) return;
         this._overlay = document.getElementById('aiDialogOverlay');
         this._container = document.getElementById('aiDialog');
-        if (!this._overlay || !this._container) return;
+        if (this._overlay && this._container) return;
+        this._createContainers();
+    },
+
+    _createContainers: function() {
+        this._overlay = document.createElement('div');
+        this._overlay.id = 'aiDialogOverlay';
+        this._overlay.className = 'ai-dialog-overlay';
+        this._overlay.style.display = 'none';
+        document.body.appendChild(this._overlay);
+
+        this._container = document.createElement('div');
+        this._container.id = 'aiDialog';
+        this._container.className = 'ai-dialog';
+        this._container.style.display = 'none';
+        document.body.appendChild(this._container);
     },
 
     _buildHTML: function(opts) {

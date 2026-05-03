@@ -5,6 +5,7 @@ var FreeClawFirstRun = true;
     I18n.init();
     Formatter.load();
     Panel.init();
+    QuickSave.init();
 
     DB.open().then(function() {
         return Config.load();
@@ -28,7 +29,6 @@ var FreeClawFirstRun = true;
         document.getElementById('aiSendBtn').onclick = function() { Sender.send(); };
         document.getElementById('aiClosePanelBtn').onclick = function() { Panel.close(); };
 
-        // 菜单按钮
         var menuBtn = document.getElementById('aiMenuBtn');
         var menuDropdown = document.getElementById('aiMenuDropdown');
 
@@ -153,7 +153,6 @@ var FreeClawFirstRun = true;
         _origClose.call(Panel);
     };
 
-    // Ctrl+S 保存
     document.addEventListener('keydown', function(e) {
         if ((e.ctrlKey || e.metaKey) && e.key === 's') {
             e.preventDefault();
