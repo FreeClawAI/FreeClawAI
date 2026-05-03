@@ -1,24 +1,3 @@
-// FreeClaw - File service (data layer, lazy loading)
-var ALLOWED_EXTS = [
-    'cs', 'js', 'ts', 'jsx', 'tsx', 'html', 'htm', 'css', 'scss', 'less',
-    'json', 'xml', 'yaml', 'yml', 'md', 'txt', 'py', 'java', 'rs', 'go',
-    'c', 'cpp', 'h', 'hpp', 'sh', 'bat', 'cmd', 'ps1', 'sql', 'vue',
-    'svelte', 'rb', 'php', 'swift', 'kt', 'dart', 'lua', 'r', 'm', 'mm',
-    'gitignore', 'env', 'editorconfig', 'prettierrc', 'eslintrc'
-];
-
-function isAllowedFile(name) {
-    var ext = name.split('.').pop().toLowerCase();
-    if (ALLOWED_EXTS.indexOf(ext) !== -1) {
-        return true;
-    }
-    var basename = name.toLowerCase();
-    if (basename === 'makefile' || basename === 'dockerfile' || basename === 'license') {
-        return true;
-    }
-    return false;
-}
-
 function makeFileId(workDir, name, type) {
     return workDir + '|' + name + '|' + type;
 }
@@ -68,7 +47,6 @@ const FileService = {
             var matchDir = matches[aiName];
             if (matchDir) {
                 matchDir = matchDir.replace(/\\/g, '/');
-                // Find which root dir this belongs to
                 var rootDir = null;
                 for (var i = 0; i < dirs.length; i++) {
                     var d = dirs[i].replace(/\\/g, '/');
@@ -94,7 +72,7 @@ const FileService = {
         }
 
         // Insert AI files
-        this._insertAiFiles(matches);
+        this._insertAiFiles();
     },
 
     async _loadDir(dir) {
@@ -111,12 +89,7 @@ const FileService = {
                 })
             });
             var j = await r.json();
-            var items = (j.files || []).filter(function(f) {
-                if (f.isDir) {
-                    return true;
-                }
-                return isAllowedFile(f.name || '');
-            });
+            var items = j.files;
             var children = [];
             var self = this;
             items.forEach(function(f) {
@@ -125,7 +98,6 @@ const FileService = {
                     type: f.isDir ? 'dir' : 'file',
                     size: f.size || 0,
                     mtime: f.mtime || 0,
-                    isOriginal: f.isDir ? false : true,
                     workDir: dir,
                     relPath: f.name || f,
                     fileType: f.isDir ? 'dir' : 'original'
@@ -162,56 +134,30 @@ const FileService = {
         }
     },
 
-    _insertAiFiles: function(matches) {
+    _insertAiFiles: function() {
         var self = this;
         var mainDir = Config.mainDir;
 
         this._aiFiles.forEach(function(aiFile) {
-            aiFile.workDir = null;
+            aiFile.workDir = mainDir;
             aiFile.type = 'file';
             aiFile.isAi = true;
             aiFile.fileType = 'ai';
+            aiFile.id = makeFileId(mainDir, aiFile.name, 'ai');
+            aiFile.isNew = true;
+            self._fileMap[aiFile.id] = aiFile;
 
-            var matchDir = matches[aiFile.name];
-            if (matchDir && self._tree[matchDir]) {
-                aiFile.workDir = matchDir;
-                aiFile.id = makeFileId(matchDir, aiFile.name, 'ai');
-                self._fileMap[aiFile.id] = aiFile;
-
-                var node = self._tree[matchDir];
-                for (var i = 0; i < node.children.length; i++) {
-                    if (node.children[i].name === aiFile.name && node.children[i].type === 'file' && !node.children[i].isAi) {
-                        node.children[i]._hasAi = true;
-                        break;
-                    }
-                }
+            var mainNode = self._tree[mainDir];
+            if (mainNode) {
                 var exists = false;
-                for (var i = 0; i < node.children.length; i++) {
-                    if (node.children[i].isAi && node.children[i].name === aiFile.name) {
+                for (var i = 0; i < mainNode.children.length; i++) {
+                    if (mainNode.children[i].isAi && mainNode.children[i].name === aiFile.name) {
                         exists = true;
                         break;
                     }
                 }
                 if (!exists) {
-                    node.children.push(aiFile);
-                }
-            } else {
-                aiFile.workDir = mainDir;
-                aiFile.id = makeFileId(mainDir, aiFile.name, 'ai');
-                aiFile.isNew = true;
-                self._fileMap[aiFile.id] = aiFile;
-                var mainNode = self._tree[mainDir];
-                if (mainNode) {
-                    var exists = false;
-                    for (var i = 0; i < mainNode.children.length; i++) {
-                        if (mainNode.children[i].isAi && mainNode.children[i].name === aiFile.name) {
-                            exists = true;
-                            break;
-                        }
-                    }
-                    if (!exists) {
-                        mainNode.children.push(aiFile);
-                    }
+                    mainNode.children.push(aiFile);
                 }
             }
         });
@@ -246,6 +192,7 @@ const FileService = {
                 name: f.name,
                 type: 'file',
                 content: f.content,
+                size: f.size || (f.content ? f.content.length : 0),
                 isUser: true,
                 workDir: f.dir || Config.mainDir,
                 relPath: f.name,
@@ -308,6 +255,7 @@ const FileService = {
             name: name,
             type: 'file',
             content: content,
+            size: content ? content.length : 0,
             isUser: true,
             workDir: Config.mainDir,
             relPath: name,

@@ -73,6 +73,87 @@ function readFileContent(dir, filename) {
     return { content, md5: md5(content) };
 }
 
+function readFileHex(dir, filename) {
+    const fp = resolvePath(dir, filename);
+    if (!fs.existsSync(fp)) throw new Error('File not found');
+    const buffer = fs.readFileSync(fp);
+    var hexLines = [];
+    var bytesPerLine = 16;
+    for (var i = 0; i < buffer.length; i += bytesPerLine) {
+        var offset = i.toString(16).padStart(8, '0');
+        var hexPart = [];
+        var asciiPart = [];
+        for (var j = 0; j < bytesPerLine; j++) {
+            if (i + j < buffer.length) {
+                var byte = buffer[i + j];
+                hexPart.push(byte.toString(16).padStart(2, '0'));
+                asciiPart.push(byte >= 32 && byte <= 126 ? String.fromCharCode(byte) : '.');
+            } else {
+                hexPart.push('  ');
+                asciiPart.push(' ');
+            }
+        }
+        hexLines.push(offset + '  ' + hexPart.join(' ') + '  |' + asciiPart.join('') + '|');
+    }
+    return hexLines.join('\n');
+}
+
+function getMimeType(filename) {
+    var ext = path.extname(filename).toLowerCase();
+    var mimes = {
+        '.png': 'image/png',
+        '.jpg': 'image/jpeg',
+        '.jpeg': 'image/jpeg',
+        '.gif': 'image/gif',
+        '.svg': 'image/svg+xml',
+        '.webp': 'image/webp',
+        '.ico': 'image/x-icon',
+        '.bmp': 'image/bmp',
+        '.pdf': 'application/pdf',
+        '.mp4': 'video/mp4',
+        '.webm': 'video/webm',
+        '.mp3': 'audio/mpeg',
+        '.wav': 'audio/wav',
+        '.ogg': 'audio/ogg',
+        '.woff': 'font/woff',
+        '.woff2': 'font/woff2',
+        '.ttf': 'font/ttf',
+        '.eot': 'application/vnd.ms-fontobject',
+        '.zip': 'application/zip',
+        '.tar': 'application/x-tar',
+        '.gz': 'application/gzip',
+        '.json': 'application/json',
+        '.xml': 'application/xml',
+        '.html': 'text/html',
+        '.css': 'text/css',
+        '.js': 'application/javascript',
+        '.txt': 'text/plain',
+        '.md': 'text/markdown'
+    };
+    return mimes[ext] || 'application/octet-stream';
+}
+
+function isTextFile(filename) {
+    var ext = path.extname(filename).toLowerCase();
+    var textExts = [
+        '.txt', '.md', '.json', '.xml', '.yaml', '.yml', '.html', '.htm',
+        '.css', '.scss', '.less', '.js', '.jsx', '.ts', '.tsx', '.vue',
+        '.svelte', '.py', '.java', '.rs', '.go', '.c', '.cpp', '.h', '.hpp',
+        '.sh', '.bat', '.cmd', '.ps1', '.sql', '.rb', '.php', '.swift',
+        '.kt', '.dart', '.lua', '.r', '.m', '.mm', '.toml', '.ini', '.cfg',
+        '.conf', '.log', '.env', '.gitignore', '.editorconfig', '.prettierrc',
+        '.eslintrc', '.csv', '.tsv'
+    ];
+    if (textExts.indexOf(ext) !== -1) {
+        return true;
+    }
+    var basename = path.basename(filename).toLowerCase();
+    if (basename === 'makefile' || basename === 'dockerfile' || basename === 'license') {
+        return true;
+    }
+    return false;
+}
+
 function writeFile(dir, filename, content, options) {
     const fp = resolvePath(dir, filename);
     const dirPath = path.dirname(fp);
@@ -183,9 +264,75 @@ const server = http.createServer(function(req, res) {
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ matches: matches }));
             } else if (req.url === '/api/files/read' && req.method === 'POST') {
-                var result = readFileContent(data.dir, data.filename);
-                res.writeHead(200, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify(result));
+                var filename = data.filename || '';
+                var dir = data.dir || '';
+                var fp = resolvePath(dir, filename);
+                if (!fs.existsSync(fp)) {
+                    res.writeHead(404, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ error: 'File not found' }));
+                    return;
+                }
+
+                // 文本文件返回文本内容
+                if (isTextFile(filename)) {
+                    var content = fs.readFileSync(fp, 'utf-8');
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({
+                        content: content,
+                        md5: md5(content)
+                    }));
+                } else {
+                    // 非文本文件返回 hex dump
+                    var hexContent = readFileHex(dir, filename);
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({
+                        content: hexContent,
+                        hex: true
+                    }));
+                }
+            } else if (req.url.startsWith('/api/files/raw') && req.method === 'GET') {
+                var urlObj = new URL(req.url, 'http://localhost:' + PORT);
+                var filePath = urlObj.searchParams.get('path') || '';
+                if (!filePath) {
+                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ error: 'Missing path parameter' }));
+                    return;
+                }
+                var fullPath = path.resolve(filePath);
+                if (!fs.existsSync(fullPath)) {
+                    res.writeHead(404, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ error: 'File not found' }));
+                    return;
+                }
+                var mimeType = getMimeType(filePath);
+                var rawBuffer = fs.readFileSync(fullPath);
+                res.writeHead(200, {
+                    'Content-Type': mimeType,
+                    'Content-Length': rawBuffer.length,
+                    'Cache-Control': 'no-cache'
+                });
+                res.end(rawBuffer);
+            } else if (req.url.startsWith('/api/files/raw') && req.method === 'POST') {
+                var filePath = data.path || '';
+                if (!filePath) {
+                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ error: 'Missing path parameter' }));
+                    return;
+                }
+                var fullPath = path.resolve(filePath);
+                if (!fs.existsSync(fullPath)) {
+                    res.writeHead(404, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ error: 'File not found' }));
+                    return;
+                }
+                var mimeType = getMimeType(filePath);
+                var rawBuffer = fs.readFileSync(fullPath);
+                res.writeHead(200, {
+                    'Content-Type': mimeType,
+                    'Content-Length': rawBuffer.length,
+                    'Cache-Control': 'no-cache'
+                });
+                res.end(rawBuffer);
             } else if (req.url === '/api/files/write' && req.method === 'POST') {
                 var result = writeFile(data.dir, data.filename, data.content, { md5: data.md5, force: data.force });
                 if (result.conflict) { res.writeHead(409, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'File modified', currentMd5: result.currentMd5 })); }

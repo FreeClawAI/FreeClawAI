@@ -64,22 +64,79 @@ const FileTree = {
                             '</div><div class="ai-tree-children" style="display:none"></div>';
                     }
                 } else {
-                    var icon = child.isAi ? '🤖' : (child.isUser ? '✏️' : (child._hasAi ? '🤖' : ''));
+                    var icon = '';
                     var cls = 'ai-tree-file';
                     if (child.isAi) {
+                        icon = '🤖';
                         cls += ' ai-ai-file';
-                    } else if (child._hasAi) {
-                        cls += ' ai-has-ai';
+                    } else if (child.isUser) {
+                        icon = '✏️';
                     }
-                    html += '<div class="' + cls + '" data-name="' + Utils.escAttr(child.name) + '" data-dir="' + Utils.escAttr(dir) + '" style="padding-left:' + (indent + 16) + 'px">' +
+                    var sizeStr = child.size !== undefined && child.size !== null ? ' <span style="color:#999;font-size:11px">(' + self._formatSize(child.size) + ')</span>' : '';
+                    html += '<div class="' + cls + '" data-name="' + Utils.escAttr(child.name) + '" data-dir="' + Utils.escAttr(dir) + '" data-filetype="' + Utils.escAttr(child.fileType || 'original') + '" data-size="' + (child.size || 0) + '" style="padding-left:' + (indent + 16) + 'px">' +
                         (icon ? '<span class="ai-tree-icon">' + icon + '</span>' : '') +
                         '<span class="ai-tree-name"' + (icon ? '' : ' style="padding-left:20px"') + '>' + Utils.esc(child.name) + '</span>' +
+                        sizeStr +
                         '</div>';
                 }
             });
         }
         html += '</div>';
         return html;
+    },
+
+    _formatSize: function(bytes) {
+        if (bytes === undefined || bytes === null) {
+            return '';
+        }
+        if (bytes < 1024) {
+            return bytes + ' B';
+        }
+        if (bytes < 1024 * 1024) {
+            return (bytes / 1024).toFixed(1) + ' KB';
+        }
+        if (bytes < 1024 * 1024 * 1024) {
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+        return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
+    },
+
+    _isMediaFile: function(name) {
+        var ext = name.split('.').pop().toLowerCase();
+        var mediaExts = [
+            'png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'ico', 'bmp',
+            'mp4', 'webm', 'avi', 'mov', 'mkv',
+            'mp3', 'wav', 'ogg', 'flac', 'aac',
+            'pdf',
+            'woff', 'woff2', 'ttf', 'eot',
+            'zip', 'tar', 'gz', 'rar', '7z'
+        ];
+        return mediaExts.indexOf(ext) !== -1;
+    },
+
+    _isPreviewableFile: function(name) {
+        var ext = name.split('.').pop().toLowerCase();
+        var previewable = [
+            'cs', 'js', 'ts', 'jsx', 'tsx', 'html', 'htm', 'css', 'scss', 'less',
+            'json', 'xml', 'yaml', 'yml', 'md', 'txt', 'py', 'java', 'rs', 'go',
+            'c', 'cpp', 'h', 'hpp', 'sh', 'bat', 'cmd', 'ps1', 'sql', 'vue',
+            'svelte', 'rb', 'php', 'swift', 'kt', 'dart', 'lua', 'r', 'm', 'mm',
+            'toml', 'ini', 'cfg', 'conf', 'log', 'csv', 'tsv'
+        ];
+        if (previewable.indexOf(ext) !== -1) {
+            return true;
+        }
+        var basename = name.toLowerCase();
+        if (basename === 'makefile' || basename === 'dockerfile' || basename === 'license' || basename === 'gitignore' || basename === 'env' || basename === 'editorconfig' || basename === 'prettierrc' || basename === 'eslintrc') {
+            return true;
+        }
+        return false;
+    },
+
+    _openRaw: function(fileDir, fileName) {
+        var absolutePath = fileDir.replace(/\\/g, '/').replace(/\/$/, '') + '/' + fileName;
+        var rawUrl = Config.serverUrl + '/api/files/raw?path=' + encodeURIComponent(absolutePath);
+        window.open(rawUrl, '_blank');
     },
 
     initEvents: function() {
@@ -115,10 +172,17 @@ const FileTree = {
                                     '<span class="ai-tree-arrow">▶</span><span class="ai-tree-icon">📁</span>' + Utils.esc(child.name) +
                                     '</div><div class="ai-tree-children" style="display:none"></div>';
                             } else {
-                                var icon = child.isAi ? '🤖' : (child.isUser ? '✏️' : (child._hasAi ? '🤖' : ''));
-                                html += '<div class="ai-tree-file" data-name="' + Utils.escAttr(child.name) + '" data-dir="' + Utils.escAttr(dir) + '" style="padding-left:' + (parentIndent + 16) + 'px">' +
+                                var icon = '';
+                                if (child.isAi) {
+                                    icon = '🤖';
+                                } else if (child.isUser) {
+                                    icon = '✏️';
+                                }
+                                var sizeStr = child.size !== undefined && child.size !== null ? ' <span style="color:#999;font-size:11px">(' + self._formatSize(child.size) + ')</span>' : '';
+                                html += '<div class="ai-tree-file" data-name="' + Utils.escAttr(child.name) + '" data-dir="' + Utils.escAttr(dir) + '" data-filetype="' + Utils.escAttr(child.fileType || 'original') + '" data-size="' + (child.size || 0) + '" style="padding-left:' + (parentIndent + 16) + 'px">' +
                                     (icon ? '<span class="ai-tree-icon">' + icon + '</span>' : '') +
                                     '<span class="ai-tree-name"' + (icon ? '' : ' style="padding-left:20px"') + '>' + Utils.esc(child.name) + '</span>' +
+                                    sizeStr +
                                     '</div>';
                             }
                         });
@@ -143,18 +207,108 @@ const FileTree = {
             if (fileEl) {
                 var fileName = fileEl.dataset.name;
                 var fileDir = fileEl.dataset.dir;
+                var fileSize = parseInt(fileEl.dataset.size) || 0;
+                var fileType = fileEl.dataset.filetype || 'original';
+
                 if (fileDir) {
                     FileService.setActiveDir(fileDir);
                 }
-                var file = FileService.getFileByName(fileName);
-                if (file) {
+
+                // 1. 媒体文件 → 浏览器新标签打开
+                if (self._isMediaFile(fileName)) {
+                    self._openRaw(fileDir, fileName);
+                    return;
+                }
+
+                // 2. 文件超过 10MB → 提示 + 浏览器打开
+                if (fileSize > 10 * 1024 * 1024) {
+                    Preview.show({
+                        name: fileName,
+                        content: I18n.t('[File too large to preview]') + ' (' + self._formatSize(fileSize) + ')\n\n' + I18n.t('Opening in browser...')
+                    });
+                    self._openRaw(fileDir, fileName);
+                    return;
+                }
+
+                // 3. AI/User 文件，已有内容直接显示
+                var file = null;
+                var types = ['ai', 'user', 'original'];
+                for (var t = 0; t < types.length; t++) {
+                    var tryId = fileDir + '|' + fileName + '|' + types[t];
+                    if (FileService._fileMap && FileService._fileMap[tryId]) {
+                        file = FileService._fileMap[tryId];
+                        break;
+                    }
+                }
+
+                if (file && file.content) {
                     Preview.show(file);
                     if (file.isUser) {
                         Editor.startEdit(file);
                     }
-                    if (!file.content && !file.isAi && !file.isUser) {
-                        self._loadContent(file);
+                    return;
+                }
+
+                // 4. 可预览文本文件 → 调用 /api/files/read
+                if (self._isPreviewableFile(fileName)) {
+                    try {
+                        var r = await fetch(Config.serverUrl + '/api/files/read', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                dir: fileDir,
+                                filename: fileName
+                            })
+                        });
+                        var j = await r.json();
+                        if (j.content !== undefined) {
+                            Preview.show({
+                                name: fileName,
+                                content: j.content
+                            });
+                        } else {
+                            Preview.show({
+                                name: fileName,
+                                content: I18n.t('[Unable to read file]')
+                            });
+                        }
+                    } catch (err) {
+                        Preview.show({
+                            name: fileName,
+                            content: I18n.t('[Unable to read file]')
+                        });
                     }
+                    return;
+                }
+
+                // 5. 其他文件（二进制等）→ 调用 /api/files/read 获取 hex 显示
+                try {
+                    var r = await fetch(Config.serverUrl + '/api/files/read', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            dir: fileDir,
+                            filename: fileName
+                        })
+                    });
+                    var j = await r.json();
+                    if (j.hex) {
+                        Preview.show({
+                            name: fileName,
+                            content: j.content,
+                            hex: true
+                        });
+                    } else {
+                        Preview.show({
+                            name: fileName,
+                            content: j.content || I18n.t('[Unable to read file]')
+                        });
+                    }
+                } catch (err) {
+                    Preview.show({
+                        name: fileName,
+                        content: I18n.t('[Unable to read file]')
+                    });
                 }
                 return;
             }
@@ -171,29 +325,6 @@ const FileTree = {
             var type = file ? (file.isAi ? 'ai' : (file.isUser ? 'user' : 'original')) : 'original';
             ContextMenu.show(e, name, type);
         });
-    },
-
-    async _loadContent(file) {
-        try {
-            var dir = Config.mainDir;
-            var r = await fetch(Config.serverUrl + '/api/files/read', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    dir: dir,
-                    filename: file.name
-                })
-            });
-            var j = await r.json();
-            file.content = j.content;
-            file.md5 = j.md5;
-            Preview.show(file);
-        } catch (e) {
-            Preview.show({
-                name: file.name,
-                content: I18n.t('[Unable to read file]')
-            });
-        }
     },
 
     getSelectedFiles: function() {

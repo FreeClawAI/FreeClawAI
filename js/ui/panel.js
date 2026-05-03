@@ -27,9 +27,8 @@ const Panel = {
                     '<div class="ai-left-header">' +
                         '<input id="aiSearchFiles" class="ai-search" placeholder="' + I18n.t('Search...') + '">' +
                         '<button id="aiRefreshBtn" title="' + I18n.t('Extract AI files') + '">🔍</button>' +
-                        '<button id="aiSaveBtn" title="' + I18n.t('Save selected') + '">💾</button>' +
-                        '<button id="aiNewFileBtn" title="' + I18n.t('New file') + '">📄</button>' +
-                        '<button id="aiNewFolderBtn" title="' + I18n.t('New folder') + '">📁</button>' +
+                        '<button id="aiSaveBtn" title="' + I18n.t('Save selected') + ' (Ctrl+S)">💾</button>' +
+                        '<button id="aiMenuBtn" title="' + I18n.t('Menu') + '">☰</button>' +
                         '<button id="aiConfigBtn" title="' + I18n.t('Disconnected') + '" class="ai-status-btn">🔌</button>' +
                     '</div>' +
                     '<div id="aiFileList"></div>' +
@@ -45,10 +44,13 @@ const Panel = {
                     '<div class="ai-bottom">' +
                         '<textarea id="aiInput" rows="1" placeholder="' + I18n.t('Add message... (Enter)') + '"></textarea>' +
                         '<button id="aiSendBtn">' + I18n.t('Send') + '</button>' +
-                        '<button id="aiStarBtn" style="display:none">⭐</button>' +
                         '<button id="aiClosePanelBtn" style="background:#6c757d">' + I18n.t('Close') + '</button>' +
                     '</div>' +
                 '</div>' +
+            '</div>' +
+            '<div id="aiMenuDropdown" class="ai-menu-dropdown" style="display:none">' +
+                '<div class="ai-menu-item" data-action="newFile">📄 ' + I18n.t('New file') + '</div>' +
+                '<div class="ai-menu-item" data-action="newFolder">📁 ' + I18n.t('New folder') + '</div>' +
             '</div>' +
             '<div id="aiDialogOverlay" class="ai-dialog-overlay" style="display:none"></div>' +
             '<div id="aiDialog" class="ai-dialog" style="display:none"></div>';
