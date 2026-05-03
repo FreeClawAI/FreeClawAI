@@ -6,6 +6,8 @@
 
 > **无需编译、无需安装依赖、无需注册账号。下载即用。**
 
+[English](README.md)
+
 ---
 
 ## 安装（30 秒）
@@ -32,35 +34,54 @@ node server.js
 
 ---
 
+## FreeClaw 协议 v1
+
+FreeClaw 使用简单的协议来识别 AI 回复中的文件。向 AI 提问时，将协议包含在提示词中：
+
+### 格式
+
+```
+// freeclaw:相对路径/文件名.扩展名
+完整源代码
+```
+
+### 规则
+
+1. 每个文件以 `// freeclaw:相对路径/文件名.扩展名` 开头，独占一行
+2. 路径相对于工作目录的根目录
+3. 路径行后输出**完整**源代码，不得使用 `...` 或省略
+4. 多个文件之间空一行分隔
+
+### 示例
+
+```
+// freeclaw:js/services/extractor.js
+const Extractor = {
+    extract() {
+        const files = [];
+        const text = document.body.innerText;
+        const pattern = /\/\/ freeclaw:([^\n]+)\n([\s\S]*?)(?=\n\/\/ freeclaw:|$)/g;
+        let match;
+        while ((match = pattern.exec(text)) !== null) {
+            files.push({ name: match[1].trim(), content: match[2].trim() });
+        }
+        return files;
+    }
+};
+```
+
+```
+// freeclaw:panel.css
+#main { color: red; }
+```
+
+---
+
 ## 使用方式
 
 ### 寄生模式
 
 直接在 DeepSeek Chat 页面使用。寄生在 AI Chat 页面，**不消耗 Token**。
-
-#### 获取源代码文件
-
-在 AI Chat 中提问时，使用以下提示词让 AI 按 FreeClaw 格式返回代码：
-
-> 用h2标题显示文件相对路径，不要加任何额外文字，代码块里放完整源代码。文件名需要相对路径。相对于工作目录的文件名。比如xxx.js，你应该告诉我js/services/xxx.js。你必须这样做，否则我去找其他ai了。
-
-将此提示词保存为 FreeClaw 模板，每次要求 AI 返回代码时一键复用。
-
-AI 会按如下格式回复：
-
-```
-## js/services/example.js
-``javascript
-// 完整源代码
-``
-
-``
-## panel.css
-``css
-/* 完整样式 */
-```
-
-FreeClaw 会自动识别 `h2` 标题中的文件名和后面的代码块。
 
 #### 保存文件到本地
 
@@ -148,10 +169,6 @@ AI 回复了代码 → 点击 📁 → 查看/编辑 → 批量保存
 **支持代码格式化吗？**
 
 支持。右键文件 → 格式化代码。使用 js-beautify（MIT License）。
-
-**为什么快捷保存按钮没反应？**
-
-确保页面上有 AI 回复的代码块（带 h2 标题 + 代码块格式）。如果提示"没有可保存的文件"，说明当前页面没有提取到代码。
 
 ---
 

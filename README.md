@@ -1,3 +1,6 @@
+## README.md
+
+```markdown
 # FreeClaw
 
 **Code AI, Free Forever.**
@@ -34,35 +37,54 @@ Uses only Node.js built-in modules. **No npm install required.** Runs on `http:/
 
 ---
 
+## FreeClaw Protocol v1
+
+FreeClaw uses a simple protocol to identify files in AI replies. When asking AI for code, include this protocol in your prompt:
+
+### Format
+
+```
+// freeclaw:relative/path/to/file.ext
+complete source code
+```
+
+### Rules
+
+1. Each file starts with `// freeclaw:relative/path/to/file.ext` on its own line
+2. The path is relative to the workspace root directory
+3. After the path line, output the **complete** source code — never use `...` or truncated
+4. Separate multiple files with a blank line
+
+### Example
+
+```
+// freeclaw:js/services/extractor.js
+const Extractor = {
+    extract() {
+        const files = [];
+        const text = document.body.innerText;
+        const pattern = /\/\/ freeclaw:([^\n]+)\n([\s\S]*?)(?=\n\/\/ freeclaw:|$)/g;
+        let match;
+        while ((match = pattern.exec(text)) !== null) {
+            files.push({ name: match[1].trim(), content: match[2].trim() });
+        }
+        return files;
+    }
+};
+```
+
+```
+// freeclaw:panel.css
+#main { color: red; }
+```
+
+---
+
 ## Usage
 
 ### Parasitic Mode
 
 Works directly on DeepSeek Chat. Lives inside the AI Chat page, **costs you zero tokens**.
-
-#### Get Source Code Files
-
-When asking AI to return code, use this prompt to ensure FreeClaw-compatible formatting:
-
-> Use h2 headings for file relative paths. No extra text. Put complete source code in code blocks. File paths must be relative to the working directory. For example, use `js/services/xxx.js` instead of `xxx.js`. You must follow this format, otherwise I will use another AI.
-
-Save this as a FreeClaw template for quick reuse.
-
-The AI will reply in this format:
-
-```
-## js/services/example.js
-``javascript
-// complete source code
-``
-
-## panel.css
-``css
-/* complete styles */
-``
-```
-
-FreeClaw automatically extracts filenames from `h2` headings and code from the following code blocks.
 
 #### Save Files Locally
 
@@ -150,10 +172,6 @@ Yes. All code stays on your machine. Server only listens on 127.0.0.1.
 **Code formatting?**
 
 Yes. Right-click file → Format Code. Uses js-beautify (MIT License).
-
-**Why doesn't Quick Save work?**
-
-Make sure the page has AI reply code blocks (h2 heading + code block format). If it says "No files to save", the page has no extractable code.
 
 ---
 
