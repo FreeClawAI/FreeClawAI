@@ -50,15 +50,14 @@ AI 会按如下格式回复：
 
 ```
 ## js/services/example.js
-```javascript
+``javascript
 // 完整源代码
-```
+``
 
-```
+``
 ## panel.css
-```css
+``css
 /* 完整样式 */
-```
 ```
 
 FreeClaw 会自动识别 `h2` 标题中的文件名和后面的代码块。

@@ -50,15 +50,14 @@ The AI will reply in this format:
 
 ```
 ## js/services/example.js
-```javascript
+``javascript
 // complete source code
-```
+``
 
-```
 ## panel.css
-```css
+``css
 /* complete styles */
-```
+``
 ```
 
 FreeClaw automatically extracts filenames from `h2` headings and code from the following code blocks.
