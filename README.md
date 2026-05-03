@@ -6,6 +6,8 @@ Grab code from AI chats, save to your local project instantly. Zero API cost. Ze
 
 > **No compilation. No dependencies. No signup. Download and use.**
 
+[中文说明](README_zh.md)
+
 ---
 
 ## Install (30 seconds)
