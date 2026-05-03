@@ -1,6 +1,3 @@
-## README.md
-
-```markdown
 # FreeClaw
 
 **Code AI, Free Forever.**
