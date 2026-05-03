@@ -64,16 +64,17 @@ const FileTree = {
                             '</div><div class="ai-tree-children" style="display:none"></div>';
                     }
                 } else {
-                    var isModified = child.isAi || child.isUser;
+                    var ft = child.fileType || 'original';
+                    var isModified = (ft === 'ai' || ft === 'user');
                     var icon = isModified ? '✏️' : '';
                     var cls = 'ai-tree-file';
                     if (isModified) {
                         cls += ' ai-ai-file';
                     }
                     var sizeStr = child.size !== undefined && child.size !== null ? ' <span style="color:#999;font-size:11px">(' + self._formatSize(child.size) + ')</span>' : '';
-                    html += '<div class="' + cls + '" data-name="' + Utils.escAttr(child.name) + '" data-dir="' + Utils.escAttr(dir) + '" data-filetype="' + Utils.escAttr(child.fileType || 'original') + '" data-size="' + (child.size || 0) + '" style="padding-left:' + (indent + 16) + 'px">' +
+                    html += '<div class="' + cls + '" data-name="' + Utils.escAttr(child.name) + '" data-dir="' + Utils.escAttr(dir) + '" data-filetype="' + Utils.escAttr(ft) + '" data-size="' + (child.size || 0) + '" style="padding-left:' + (indent + 16) + 'px">' +
                         (icon ? '<span class="ai-tree-icon">' + icon + '</span>' : '') +
-                        '<span class="ai-tree-name"' + (icon ? '' : ' style="padding-left:20px"') + '>' + Utils.esc(child.name) + '</span>' +
+                        '<span class="ai-tree-name"' + (icon ? '' : ' style="padding-left:20px"') + '>' + Utils.esc(getShortName(child.name)) + '</span>' +
                         sizeStr +
                         '</div>';
                 }
@@ -132,7 +133,7 @@ const FileTree = {
     },
 
     _openRaw: function(fileDir, fileName) {
-        var absolutePath = fileDir.replace(/\\/g, '/').replace(/\/$/, '') + '/' + fileName;
+        var absolutePath = fileDir.replace(/\\/g, '/').replace(/\/$/, '') + '/' + getShortName(fileName);
         var rawUrl = Config.serverUrl + '/api/files/raw?path=' + encodeURIComponent(absolutePath);
         window.open(rawUrl, '_blank');
     },
@@ -170,12 +171,13 @@ const FileTree = {
                                     '<span class="ai-tree-arrow">▶</span><span class="ai-tree-icon">📁</span>' + Utils.esc(child.name) +
                                     '</div><div class="ai-tree-children" style="display:none"></div>';
                             } else {
-                                var isModified = child.isAi || child.isUser;
+                                var ft = child.fileType || 'original';
+                                var isModified = (ft === 'ai' || ft === 'user');
                                 var icon = isModified ? '✏️' : '';
                                 var sizeStr = child.size !== undefined && child.size !== null ? ' <span style="color:#999;font-size:11px">(' + self._formatSize(child.size) + ')</span>' : '';
-                                html += '<div class="ai-tree-file" data-name="' + Utils.escAttr(child.name) + '" data-dir="' + Utils.escAttr(dir) + '" data-filetype="' + Utils.escAttr(child.fileType || 'original') + '" data-size="' + (child.size || 0) + '" style="padding-left:' + (parentIndent + 16) + 'px">' +
+                                html += '<div class="ai-tree-file" data-name="' + Utils.escAttr(child.name) + '" data-dir="' + Utils.escAttr(dir) + '" data-filetype="' + Utils.escAttr(ft) + '" data-size="' + (child.size || 0) + '" style="padding-left:' + (parentIndent + 16) + 'px">' +
                                     (icon ? '<span class="ai-tree-icon">' + icon + '</span>' : '') +
-                                    '<span class="ai-tree-name"' + (icon ? '' : ' style="padding-left:20px"') + '>' + Utils.esc(child.name) + '</span>' +
+                                    '<span class="ai-tree-name"' + (icon ? '' : ' style="padding-left:20px"') + '>' + Utils.esc(getShortName(child.name)) + '</span>' +
                                     sizeStr +
                                     '</div>';
                             }
@@ -215,7 +217,7 @@ const FileTree = {
 
                 if (fileSize > 10 * 1024 * 1024) {
                     Preview.show({
-                        name: fileName,
+                        name: getShortName(fileName),
                         content: I18n.t('[File too large to preview]') + ' (' + self._formatSize(fileSize) + ')\n\n' + I18n.t('Opening in browser...')
                     });
                     self._openRaw(fileDir, fileName);
@@ -234,7 +236,7 @@ const FileTree = {
 
                 if (file && file.content) {
                     Preview.show(file);
-                    if (file.isUser) {
+                    if (file.fileType === 'user') {
                         Editor.startEdit(file);
                     }
                     return;
@@ -253,18 +255,18 @@ const FileTree = {
                         var j = await r.json();
                         if (j.content !== undefined) {
                             Preview.show({
-                                name: fileName,
+                                name: getShortName(fileName),
                                 content: j.content
                             });
                         } else {
                             Preview.show({
-                                name: fileName,
+                                name: getShortName(fileName),
                                 content: I18n.t('[Unable to read file]')
                             });
                         }
                     } catch (err) {
                         Preview.show({
-                            name: fileName,
+                            name: getShortName(fileName),
                             content: I18n.t('[Unable to read file]')
                         });
                     }
@@ -283,19 +285,19 @@ const FileTree = {
                     var j = await r.json();
                     if (j.hex) {
                         Preview.show({
-                            name: fileName,
+                            name: getShortName(fileName),
                             content: j.content,
                             hex: true
                         });
                     } else {
                         Preview.show({
-                            name: fileName,
+                            name: getShortName(fileName),
                             content: j.content || I18n.t('[Unable to read file]')
                         });
                     }
                 } catch (err) {
                     Preview.show({
-                        name: fileName,
+                        name: getShortName(fileName),
                         content: I18n.t('[Unable to read file]')
                     });
                 }
@@ -311,8 +313,8 @@ const FileTree = {
             e.preventDefault();
             var name = target.dataset.name;
             var file = FileService.getFileByName(name);
-            var type = file ? (file.isAi ? 'ai' : (file.isUser ? 'user' : 'original')) : 'original';
-            ContextMenu.show(e, name, type);
+            var type = file ? file.fileType : 'original';
+            ContextMenu.show(e, getShortName(name), type);
         });
     },
 

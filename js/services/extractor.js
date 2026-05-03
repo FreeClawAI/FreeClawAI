@@ -7,24 +7,32 @@ const Extractor = {
         const files = [];
         const seen = [];
 
-        document.querySelectorAll(sel.container).forEach(block => {
-            const pre = sel.codeElement ? block.querySelector(sel.codeElement) : block;
+        var allBlocks = document.querySelectorAll(sel.container);
+        if (!allBlocks.length) return [];
+
+        var lastBlock = allBlocks[allBlocks.length - 1];
+        var replyContainer = lastBlock.closest('.ds-markdown') || lastBlock;
+
+        var codeBlocks = replyContainer.querySelectorAll('.md-code-block');
+        codeBlocks.forEach(function(block) {
+            var pre = sel.codeElement ? block.querySelector(sel.codeElement) : block;
             if (!pre) return;
-            const code = (pre.textContent || '').trim();
+            var code = (pre.textContent || '').trim();
             if (!code || code.length < 20) return;
 
-            let filename = sel.getFilename(block) || '';
-            if (filename) {
-                const m = filename.match(/([a-zA-Z0-9_\-\.\/]+\.(?:cs|js|html|css|json|txt|py|java|ts|tsx|jsx|md|xml|yaml|yml|sql|sh|bat|cmd))/i);
-                filename = m ? m[1] : '';
+            var name = sel.getFilename(block) || '';
+            if (name) {
+                var m = name.match(/([a-zA-Z0-9_\-\.\/]+\.(?:cs|js|html|css|json|txt|py|java|ts|tsx|jsx|md|xml|yaml|yml|sql|sh|bat|cmd))/i);
+                name = m ? m[1] : '';
             }
-            if (!filename) filename = 'code_' + (files.length + 1) + '.txt';
+            if (!name) name = 'code_' + (files.length + 1) + '.txt';
 
-            if (seen.indexOf(filename) === -1) {
-                seen.push(filename);
-                files.push({ name: filename, content: code, isAi: true });
+            if (seen.indexOf(name) === -1) {
+                seen.push(name);
+                files.push({ name: name, content: code });
             }
         });
+
         return files;
     },
 

@@ -24,7 +24,7 @@ var FreeClawFirstRun = true;
 
         document.getElementById('aiConfigBtn').onclick = function() { SettingsDialog.show(); };
         document.getElementById('aiRefreshBtn').onclick = function() { FileTree.refresh(); };
-        document.getElementById('aiSaveBtn').onclick = function() { Saver.saveSelected(); };
+        document.getElementById('aiSaveBtn').onclick = function() { SaveDialog.show(); };
         document.getElementById('aiSendBtn').onclick = function() { Sender.send(); };
         document.getElementById('aiClosePanelBtn').onclick = function() { Panel.close(); };
 
@@ -157,7 +157,7 @@ var FreeClawFirstRun = true;
     document.addEventListener('keydown', function(e) {
         if ((e.ctrlKey || e.metaKey) && e.key === 's') {
             e.preventDefault();
-            Saver.saveSelected();
+            SaveDialog.show();
         }
     });
 })();

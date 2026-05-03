@@ -3,16 +3,19 @@ const Sender = {
     MAX_CHARS: 100000,
 
     send: async function() {
-        var input = document.getElementById('aiInput').value.trim();
+        var input = document.getElementById('aiInput');
+        var inputVal = input ? input.value.trim() : '';
         var files = FileTree.getSelectedFiles();
-        await this._doSend(input, files);
-        document.getElementById('aiStarBtn').style.display = 'inline-block';
+        await this._doSend(inputVal, files);
+        var starBtn = document.getElementById('aiStarBtn');
+        if (starBtn) starBtn.style.display = 'inline-block';
     },
 
     sendDirect: async function(promptContent) {
         var files = FileTree.getSelectedFiles();
         await this._doSend(promptContent, files);
-        document.getElementById('aiStarBtn').style.display = 'inline-block';
+        var starBtn = document.getElementById('aiStarBtn');
+        if (starBtn) starBtn.style.display = 'inline-block';
     },
 
     _doSend: async function(userInput, files) {

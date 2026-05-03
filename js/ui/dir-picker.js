@@ -25,18 +25,32 @@ var DirPicker = {
     _render: function() {
         var self = this;
 
+        var desktopPath = (typeof self._paths.desktop === 'string') ? self._paths.desktop : '';
+        var documentsPath = (typeof self._paths.documents === 'string') ? self._paths.documents : '';
+        var downloadsPath = (typeof self._paths.downloads === 'string') ? self._paths.downloads : '';
+
+        var workDirs = Config.workDirs || [];
+        var workDirsHtml = '';
+        workDirs.forEach(function(d) {
+            var dirName = String(d || '').split('\\').pop().split('/').pop() || d;
+            workDirsHtml += '<div class="ai-picker-quick" data-path="' + Utils.escAttr(String(d || '')) + '" style="padding:6px 10px;cursor:pointer;font-size:12px;border-bottom:1px solid #f0f0f0" title="' + Utils.escAttr(String(d || '')) + '">📁 ' + Utils.esc(dirName) + '</div>';
+        });
+
         var body =
             '<div class="ai-picker-path-bar"><div id="aiPickerBreadcrumb" style="flex:1;font-size:12px;overflow:hidden;white-space:nowrap"></div></div>' +
             '<div class="ai-picker-input-bar">' +
                 '<span style="font-size:12px;margin-right:6px">' + I18n.t('Folder:') + '</span>' +
-                '<input id="aiPickerPathInput" class="ai-dialog-input" value="' + Utils.escAttr(self._currentPath) + '" style="flex:1">' +
+                '<input id="aiPickerPathInput" class="ai-dialog-input" value="' + Utils.escAttr(String(self._currentPath || '')) + '" style="flex:1">' +
                 '<button id="aiPickerGoBtn" style="padding:5px 10px;border:1px solid #ccc;border-radius:4px;background:white;cursor:pointer">' + I18n.t('Go') + '</button>' +
             '</div>' +
             '<div class="ai-picker-body">' +
                 '<div class="ai-picker-sidebar">' +
-                    '<div class="ai-picker-quick" data-path="' + Utils.escAttr(self._paths.desktop || '') + '" style="padding:6px 10px;cursor:pointer;font-size:12px;border-bottom:1px solid #f0f0f0">📂 ' + I18n.t('Desktop') + '</div>' +
-                    '<div class="ai-picker-quick" data-path="' + Utils.escAttr(self._paths.documents || '') + '" style="padding:6px 10px;cursor:pointer;font-size:12px;border-bottom:1px solid #f0f0f0">📂 ' + I18n.t('Documents') + '</div>' +
-                    '<div class="ai-picker-quick" data-path="' + Utils.escAttr(self._paths.downloads || '') + '" style="padding:6px 10px;cursor:pointer;font-size:12px;border-bottom:1px solid #f0f0f0">📂 ' + I18n.t('Downloads') + '</div>' +
+                    '<div style="padding:6px 10px;font-size:11px;color:#999;font-weight:bold">' + I18n.t('Workspace') + '</div>' +
+                    workDirsHtml +
+                    '<div style="padding:6px 10px;font-size:11px;color:#999;font-weight:bold;border-top:1px solid #eee">' + I18n.t('Quick access') + '</div>' +
+                    '<div class="ai-picker-quick" data-path="' + Utils.escAttr(desktopPath) + '" style="padding:6px 10px;cursor:pointer;font-size:12px;border-bottom:1px solid #f0f0f0">🖥 ' + I18n.t('Desktop') + '</div>' +
+                    '<div class="ai-picker-quick" data-path="' + Utils.escAttr(documentsPath) + '" style="padding:6px 10px;cursor:pointer;font-size:12px;border-bottom:1px solid #f0f0f0">📂 ' + I18n.t('Documents') + '</div>' +
+                    '<div class="ai-picker-quick" data-path="' + Utils.escAttr(downloadsPath) + '" style="padding:6px 10px;cursor:pointer;font-size:12px;border-bottom:1px solid #f0f0f0">⬇ ' + I18n.t('Downloads') + '</div>' +
                     '<div class="ai-picker-quick" data-path="__drives__" style="padding:6px 10px;cursor:pointer;font-size:12px;border-bottom:1px solid #f0f0f0">💻 ' + I18n.t('This PC') + '</div>' +
                 '</div>' +
                 '<div class="ai-picker-main"><div id="aiPickerList" style="flex:1;overflow:auto;padding:4px"><div style="text-align:center;color:#999;padding:20px">' + I18n.t('Loading...') + '</div></div></div>' +
@@ -86,7 +100,7 @@ var DirPicker = {
     },
 
     _navigate: async function(dir) {
-        if (!dir) return;
+        if (!dir || typeof dir !== 'string') return;
         this._currentPath = dir.replace(/\\/g, '/');
         this._updatePathInput();
         this._renderBreadcrumb();
@@ -101,7 +115,7 @@ var DirPicker = {
             var dirs = files.filter(function(f) { return f.isDir === true; });
             var html = '';
             if (dirs.length === 0) html = '<div style="text-align:center;color:#999;padding:20px">' + I18n.t('No subfolders') + '</div>';
-            else { dirs.forEach(function(d) { html += '<div class="ai-picker-item" data-dir="' + Utils.escAttr(d.name) + '" style="padding:6px 8px;cursor:pointer;border-bottom:1px solid #f0f0f0">📁 ' + Utils.esc(d.name) + '</div>'; }); }
+            else { dirs.forEach(function(d) { html += '<div class="ai-picker-item" data-dir="' + Utils.escAttr(String(d.name || '')) + '" style="padding:6px 8px;cursor:pointer;border-bottom:1px solid #f0f0f0">📁 ' + Utils.esc(String(d.name || '')) + '</div>'; }); }
             list.innerHTML = html;
             var self = this;
             list.querySelectorAll('.ai-picker-item').forEach(function(item) {
@@ -121,7 +135,7 @@ var DirPicker = {
         if (!list) return;
         var self = this;
         var html = '';
-        drives.forEach(function(drive) { html += '<div class="ai-picker-item" data-dir="' + Utils.escAttr(drive) + '" style="padding:6px 8px;cursor:pointer;border-bottom:1px solid #f0f0f0">💿 ' + drive + '</div>'; });
+        drives.forEach(function(drive) { html += '<div class="ai-picker-item" data-dir="' + Utils.escAttr(String(drive || '')) + '" style="padding:6px 8px;cursor:pointer;border-bottom:1px solid #f0f0f0">💿 ' + Utils.esc(String(drive || '')) + '</div>'; });
         if (!html) html = '<div style="text-align:center;color:#999;padding:20px">' + I18n.t('No subfolders') + '</div>';
         list.innerHTML = html;
         list.querySelectorAll('.ai-picker-item').forEach(function(item) { item.ondblclick = function() { self._navigate(this.dataset.dir); }; });
@@ -137,8 +151,8 @@ var DirPicker = {
         parts.forEach(function(part, i) {
             if (part.indexOf(':') !== -1) current = part + '/';
             else current = current.replace(/\/$/, '') + '/' + part;
-            if (i === parts.length - 1) html += '<strong>' + Utils.esc(part) + '</strong>';
-            else html += '<span class="ai-breadcrumb-link" data-path="' + Utils.escAttr(current) + '" style="cursor:pointer;color:#007bff">' + Utils.esc(part) + '</span> &gt; ';
+            if (i === parts.length - 1) html += '<strong>' + Utils.esc(String(part)) + '</strong>';
+            else html += '<span class="ai-breadcrumb-link" data-path="' + Utils.escAttr(String(current)) + '" style="cursor:pointer;color:#007bff">' + Utils.esc(String(part)) + '</span> &gt; ';
         });
         bc.innerHTML = html;
         bc.querySelectorAll('.ai-breadcrumb-link').forEach(function(link) { link.onclick = function() { self._navigate(this.dataset.path); }; });

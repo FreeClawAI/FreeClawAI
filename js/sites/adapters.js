@@ -6,11 +6,15 @@ const Sites = {
             container: '.ds-markdown .md-code-block',
             codeElement: 'pre',
             getFilename(block) {
-                let el = block.previousElementSibling;
-                for (let j = 0; j < 10 && el; j++) {
-                    const h2 = el.tagName === 'H2' ? el : el.querySelector('h2');
-                    if (h2) return h2.textContent.trim();
-                    el = el.previousElementSibling;
+                var container = block.closest('.ds-markdown');
+                if (!container) return null;
+                var allH2 = container.querySelectorAll('h2');
+                for (var k = allH2.length - 1; k >= 0; k--) {
+                    var h2 = allH2[k];
+                    var text = h2.textContent.trim();
+                    if (text && h2.compareDocumentPosition(block) & Node.DOCUMENT_POSITION_FOLLOWING) {
+                        return text;
+                    }
                 }
                 return null;
             }
