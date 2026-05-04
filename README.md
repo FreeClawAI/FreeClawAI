@@ -36,7 +36,7 @@ Uses only Node.js built-in modules. **No npm install required.** Runs on `http:/
 
 ## The FreeClaw Protocol
 
-FreeClaw implements the [FreeClaw Protocol v1](https://github.com/FreeClawAI/freeclaw-protocol) — a Markdown-based protocol for structured code file delivery from AI to file systems.
+a Markdown-based protocol for structured code file delivery from AI to file systems.
 
 ### Syntax
 

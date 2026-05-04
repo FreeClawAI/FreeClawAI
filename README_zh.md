@@ -34,7 +34,7 @@ node server.js
 
 ## FreeClaw 协议
 
-FreeClaw 实现了 [FreeClaw Protocol v1](https://github.com/FreeClawAI/freeclaw-protocol) —— 一套基于 Markdown 的代码文件交付协议，用于 AI 向文件系统输出结构化代码。
+一套基于 Markdown 的代码文件交付协议，用于 AI 向文件系统输出结构化代码。
 
 ### 语法格式
 

@@ -28,22 +28,24 @@ const FileService = {
         }
         this._tree[Config.mainDir]._expanded = true;
 
-        var aiNames = this._aiFiles.map(function(f) {
-            return f.name;
-        });
         var matches = {};
-        try {
-            var fr = await fetch(Config.serverUrl + '/api/files/find', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    dirs: dirs,
-                    aiFiles: aiNames
-                })
+        if (this._aiFiles.length > 0) {
+            var aiNames = this._aiFiles.map(function(f) {
+                return f.name;
             });
-            var fj = await fr.json();
-            matches = fj.matches || {};
-        } catch (e) {}
+            try {
+                var fr = await fetch(Config.serverUrl + '/api/files/find', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        dirs: dirs,
+                        aiFiles: aiNames
+                    })
+                });
+                var fj = await fr.json();
+                matches = fj.matches || {};
+            } catch (e) {}
+        }
 
         for (var aiName in matches) {
             var info = matches[aiName];
@@ -83,63 +85,99 @@ const FileService = {
         if (this._tree[dir] && this._tree[dir]._loaded) {
             return;
         }
+        var workDirs = Config.workDirs;
+        var normalizedDirs = workDirs.map(function(d) {
+            return d.replace(/\\/g, '/').replace(/\/$/, '');
+        });
+
+        var dirNormalized = dir.replace(/\\/g, '/');
+        var rootWorkDir = workDirs[0];
+        for (var k = 0; k < normalizedDirs.length; k++) {
+            if (dirNormalized.indexOf(normalizedDirs[k]) === 0) {
+                rootWorkDir = workDirs[k];
+                break;
+            }
+        }
+
+        var wd = rootWorkDir.replace(/\\/g, '/').replace(/\/$/, '');
+        var treeName = dirNormalized;
+        if (treeName.indexOf(wd + '/') === 0) {
+            treeName = treeName.substring(wd.length + 1);
+        } else if (treeName.indexOf(wd) === 0) {
+            treeName = treeName.substring(wd.length);
+        }
+        if (!treeName) treeName = rootWorkDir.split('\\').pop().split('/').pop();
+
         try {
             var r = await fetch(Config.serverUrl + '/api/files/list', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    dir: dir,
-                    flat: true
-                })
+                body: JSON.stringify({ dir: dir })
             });
             var j = await r.json();
             var items = j.files;
             var children = [];
             var self = this;
+
             items.forEach(function(f) {
+                var fullPath = (f.fullPath || '').replace(/\\/g, '/');
+                var name = fullPath;
+                if (name.indexOf(wd + '/') === 0) {
+                    name = name.substring(wd.length + 1);
+                } else if (name.indexOf(wd) === 0) {
+                    name = name.substring(wd.length);
+                }
+
                 var node = {
-                    name: f.name || f,
+                    name: name,
+                    fullPath: fullPath,
                     type: f.isDir ? 'dir' : 'file',
                     size: f.size || 0,
                     mtime: f.mtime || 0,
-                    workDir: dir,
-                    fileType: f.isDir ? 'dir' : 'original'
+                    workDir: rootWorkDir,
+                    fileType: 'original'
                 };
                 if (!f.isDir) {
-                    node.id = makeFileId(dir, node.name, 'original');
+                    node.id = makeFileId(rootWorkDir, node.name, 'original');
                     self._fileMap[node.id] = node;
                 }
                 children.push(node);
             });
+
             children.sort(function(a, b) {
                 if (a.type !== b.type) {
                     return a.type === 'dir' ? -1 : 1;
                 }
                 return a.name.localeCompare(b.name);
             });
+
             this._tree[dir] = {
-                name: dir.split('\\').pop().split('/').pop(),
+                name: treeName,
+                fullPath: dir,
                 type: 'dir',
+                fileType: 'dir',
                 children: children,
                 _loaded: true,
                 _expanded: false,
-                workDir: dir
+                workDir: rootWorkDir
             };
         } catch (e) {
             this._tree[dir] = {
-                name: dir.split('\\').pop().split('/').pop(),
+                name: treeName,
+                fullPath: dir,
                 type: 'dir',
+                fileType: 'dir',
                 children: [],
                 _loaded: true,
                 _expanded: false,
-                workDir: dir
+                workDir: rootWorkDir
             };
         }
     },
 
     _insertAiFiles: function(matches) {
         var self = this;
-        var mainDir = Config.mainDir;
+        var workDirs = Config.workDirs;
 
         this._aiFiles.forEach(function(aiFile) {
             var info = matches[aiFile.name];
@@ -148,27 +186,32 @@ const FileService = {
                 var aiContent = (aiFile.content || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
                 var origContent = (info.content || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
                 if (aiContent === origContent) {
-                    var matchPath = info.path.replace(/\\/g, '/');
-                    var matchDir = matchPath.substring(0, matchPath.lastIndexOf('/'));
-                    if (self._tree[matchDir]) {
-                        for (var i = 0; i < self._tree[matchDir].children.length; i++) {
-                            if (getShortName(self._tree[matchDir].children[i].name) === getShortName(aiFile.name) && self._tree[matchDir].children[i].fileType === 'original') {
-                                self._tree[matchDir].children[i].size = info.size;
-                                break;
-                            }
-                        }
-                    }
                     return;
+                }
+            }
+
+            var matchDir = null;
+            var matchWorkDir = workDirs[0];
+            if (info && info.path) {
+                var matchPath = info.path.replace(/\\/g, '/');
+                matchDir = matchPath.substring(0, matchPath.lastIndexOf('/'));
+                for (var k = 0; k < workDirs.length; k++) {
+                    var wd = workDirs[k].replace(/\\/g, '/');
+                    if (matchDir.indexOf(wd) === 0) {
+                        matchWorkDir = workDirs[k];
+                        break;
+                    }
                 }
             }
 
             aiFile.type = 'file';
             aiFile.fileType = 'ai';
             aiFile.size = aiFile.content ? aiFile.content.length : 0;
-            aiFile.workDir = mainDir;
-            aiFile.id = makeFileId(mainDir, aiFile.name, 'ai');
+            aiFile.workDir = matchWorkDir;
+            aiFile.id = makeFileId(matchWorkDir, aiFile.name, 'ai');
 
             if (info && info.path) {
+                aiFile.fullPath = info.path;
                 aiFile._origPath = info.path;
                 aiFile._origSize = info.size;
                 aiFile._origMtime = info.mtime;
@@ -179,24 +222,24 @@ const FileService = {
 
             self._fileMap[aiFile.id] = aiFile;
 
-            var mainNode = self._tree[mainDir];
-            if (mainNode) {
+            var targetNode = matchDir ? self._tree[matchDir] : null;
+            if (targetNode) {
                 var exists = false;
-                for (var i = 0; i < mainNode.children.length; i++) {
-                    if (mainNode.children[i].fileType === 'ai' && mainNode.children[i].name === aiFile.name) {
+                for (var i = 0; i < targetNode.children.length; i++) {
+                    if (targetNode.children[i].fileType === 'ai' && targetNode.children[i].name === aiFile.name) {
                         exists = true;
                         break;
                     }
                 }
                 if (!exists) {
-                    var insertIndex = mainNode.children.length;
-                    for (var i = 0; i < mainNode.children.length; i++) {
-                        if (getShortName(mainNode.children[i].name) === getShortName(aiFile.name) && mainNode.children[i].fileType === 'original') {
+                    var insertIndex = targetNode.children.length;
+                    for (var i = 0; i < targetNode.children.length; i++) {
+                        if (targetNode.children[i].name === aiFile.name && targetNode.children[i].fileType === 'original') {
                             insertIndex = i + 1;
                             break;
                         }
                     }
-                    mainNode.children.splice(insertIndex, 0, aiFile);
+                    targetNode.children.splice(insertIndex, 0, aiFile);
                 }
             }
         });
@@ -229,7 +272,7 @@ const FileService = {
         var node = this._tree[dir];
         if (!node || !node.children) return [];
         return node.children.filter(function(c) {
-            return c.type === 'file' && c.fileType === 'original';
+            return c.fileType === 'original';
         });
     },
 
@@ -237,7 +280,7 @@ const FileService = {
         var node = this._tree[dir];
         if (!node || !node.children) return null;
         for (var i = 0; i < node.children.length; i++) {
-            if (getShortName(node.children[i].name) === getShortName(filename) && node.children[i].type === 'file') {
+            if (node.children[i].name === filename) {
                 return node.children[i];
             }
         }
@@ -285,7 +328,7 @@ const FileService = {
         for (var d in this._tree) {
             var children = this._tree[d].children || [];
             for (var i = 0; i < children.length; i++) {
-                if (children[i].name === name && children[i].type === 'file') {
+                if (children[i].name === name) {
                     return children[i];
                 }
             }

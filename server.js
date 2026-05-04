@@ -42,7 +42,7 @@ function writeBinaryFile(fp, content) {
     fs.writeFileSync(fp, Buffer.from(content, 'utf-8'));
 }
 
-function listFiles(dir, flat) {
+function listFiles(dir) {
     var workDir = normalizeDir(dir);
     if (!fs.existsSync(workDir)) return [];
     const result = [];
@@ -50,30 +50,15 @@ function listFiles(dir, flat) {
     try { items = fs.readdirSync(workDir, { withFileTypes: true }); } catch (e) { return []; }
     items.forEach(function(item) {
         try {
-            var st = fs.statSync(path.join(workDir, item.name));
+            var fullPath = path.join(workDir, item.name);
+            var st = fs.statSync(fullPath);
             if (item.isDirectory()) {
-                result.push({ name: item.name, isDir: true, mtime: st.mtimeMs });
-                if (!flat) walk(path.join(workDir, item.name), item.name + '/');
+                result.push({isDir: true, mtime: st.mtimeMs, fullPath: fullPath });
             } else {
-                result.push({ name: item.name, size: st.size, isDir: false, mtime: st.mtimeMs });
+                result.push({size: st.size, isDir: false, mtime: st.mtimeMs, fullPath: fullPath });
             }
         } catch (e) {}
     });
-    function walk(d, prefix) {
-        var subItems;
-        try { subItems = fs.readdirSync(d, { withFileTypes: true }); } catch (e) { return; }
-        subItems.forEach(function(item) {
-            try {
-                var st = fs.statSync(path.join(d, item.name));
-                if (item.isDirectory()) {
-                    result.push({ name: prefix + item.name, isDir: true, mtime: st.mtimeMs });
-                    walk(path.join(d, item.name), prefix + item.name + '/');
-                } else {
-                    result.push({ name: prefix + item.name, size: st.size, isDir: false, mtime: st.mtimeMs });
-                }
-            } catch (e) {}
-        });
-    }
     return result;
 }
 
@@ -245,8 +230,7 @@ const server = http.createServer(function(req, res) {
                 res.end(JSON.stringify({ success: true, dirs: validDirs }));
             } else if (req.url === '/api/files/list' && req.method === 'POST') {
                 var dir = data.dir || '';
-                var flat = data.flat !== false;
-                var files = listFiles(dir, flat);
+                var files = listFiles(dir);
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ files: files }));
             } else if (req.url === '/api/files/batch' && req.method === 'POST') {

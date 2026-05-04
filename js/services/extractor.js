@@ -10,29 +10,28 @@ const Extractor = {
         var allBlocks = document.querySelectorAll(sel.container);
         if (!allBlocks.length) return [];
 
-        var lastBlock = allBlocks[allBlocks.length - 1];
-        var replyContainer = lastBlock.closest('.ds-markdown') || lastBlock;
+        for (let i = allBlocks.length - 1; i >= 0; i--) {
+            const lastBlock = allBlocks[i];
+            const replyContainer = lastBlock.closest('.ds-markdown') || lastBlock;
+            const codeBlocks = replyContainer.querySelectorAll('.md-code-block');
+            codeBlocks.forEach(function(block) {
+                const pre = sel.codeElement ? block.querySelector(sel.codeElement) : block;
+                if (!pre) return;
+                const code = (pre.textContent || '').trim();
+                if (!code || code.length < 20) return;
 
-        var codeBlocks = replyContainer.querySelectorAll('.md-code-block');
-        codeBlocks.forEach(function(block) {
-            var pre = sel.codeElement ? block.querySelector(sel.codeElement) : block;
-            if (!pre) return;
-            var code = (pre.textContent || '').trim();
-            if (!code || code.length < 20) return;
+                const name = sel.getFilename(block) || '';
+                if (!name) return;
 
-            var name = sel.getFilename(block) || '';
-            if (name) {
-                var m = name.match(/([a-zA-Z0-9_\-\.\/]+\.(?:cs|js|html|css|json|txt|py|java|ts|tsx|jsx|md|xml|yaml|yml|sql|sh|bat|cmd))/i);
-                name = m ? m[1] : '';
-            }
-            if (!name) name = 'code_' + (files.length + 1) + '.txt';
+                if (name.indexOf('.') === -1) return;
+                if (name.charAt(0) === '/' || name.charAt(0) === '.' || name.indexOf('..') !== -1) return;
 
-            if (seen.indexOf(name) === -1) {
-                seen.push(name);
-                files.push({ name: name, content: code });
-            }
-        });
-
+                if (seen.indexOf(name) === -1) {
+                    seen.push(name);
+                    files.push({ name: name, content: code });
+                }
+            });
+        }
         return files;
     },
 

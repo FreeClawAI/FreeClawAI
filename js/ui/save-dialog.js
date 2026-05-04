@@ -16,23 +16,12 @@ const SaveDialog = {
         }
         var multiWorkspace = workDirs.length > 1;
 
-        function formatSavePath(workDir, name) {
-            var normalizedWd = workDir.replace(/\\/g, '/');
-            var matchedWorkspace = null;
-            for (var i = 0; i < workDirs.length; i++) {
-                var normalizedRoot = workDirs[i].replace(/\\/g, '/');
-                if (normalizedWd.indexOf(normalizedRoot) === 0) {
-                    matchedWorkspace = workDirs[i];
-                    break;
-                }
-            }
-            if (matchedWorkspace && !multiWorkspace) {
+        function formatDisplayPath(workDir, name) {
+            var wdName = workDir.split('\\').pop().split('/').pop();
+            if (!multiWorkspace) {
                 return name;
             }
-            if (matchedWorkspace && multiWorkspace) {
-                return getShortName(matchedWorkspace) + ':' + name;
-            }
-            return normalizedWd + '/' + name;
+            return wdName + ':' + name;
         }
 
         function isPathInWorkDirs(path) {
@@ -46,41 +35,17 @@ const SaveDialog = {
             return false;
         }
 
-        function splitFilename(name) {
-            var lastSlash = Math.max(name.lastIndexOf('/'), name.lastIndexOf('\\'));
-            if (lastSlash === -1) {
-                return { dirPart: '', filePart: name };
-            }
-            return {
-                dirPart: name.substring(0, lastSlash),
-                filePart: name.substring(lastSlash + 1)
-            };
-        }
-
         var fileItems = allFiles.map(function(f) {
-            var parts = splitFilename(f.name);
-            var filePart = parts.filePart;
-            var dirPart = parts.dirPart;
-
             var wd = f.workDir || Config.mainDir;
             if (!isPathInWorkDirs(wd)) {
                 wd = Config.mainDir;
             }
-
-            var saveDir = wd;
-            if (dirPart) {
-                saveDir = wd.replace(/\\/g, '/').replace(/\/$/, '') + '/' + dirPart;
-            }
-
-            var displayPath = formatSavePath(saveDir, filePart);
+            var displayPath = formatDisplayPath(wd, f.name);
             return {
                 name: f.name,
-                filePart: filePart,
-                dirPart: dirPart,
                 displayPath: displayPath,
                 file: f,
-                path: displayPath,
-                saveDir: saveDir,
+                saveDir: wd,
                 size: f.size || (f.content ? f.content.length : 0)
             };
         });
@@ -97,11 +62,12 @@ const SaveDialog = {
 
         html += '<div style="max-height:350px;overflow:auto" id="aiSaveFileList">';
         fileItems.forEach(function(item, index) {
+            var saveToDisplay = formatDisplayPath(item.saveDir, item.name);
             html += '<div class="ai-save-row" data-index="' + index + '" style="display:flex;align-items:center;padding:6px 0;border-bottom:1px solid #f0f0f0">' +
                 '<span style="width:28px"><input type="checkbox" class="ai-save-check" data-index="' + index + '" checked></span>' +
-                '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📄 ' + Utils.esc(item.displayPath) + '</span>' +
+                '<span class="ai-save-file-col" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📄 ' + Utils.esc(item.displayPath) + '</span>' +
                 '<span style="width:70px;text-align:right;font-size:11px;color:#999">' + formatSizeForList(item.size) + '</span>' +
-                '<span class="ai-save-path" style="flex:1;padding-left:8px;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#333">' + Utils.esc(item.path) + '</span>' +
+                '<span class="ai-save-path" style="flex:1;padding-left:8px;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#333">' + Utils.esc(saveToDisplay) + '</span>' +
                 '<span style="width:40px;text-align:center"><button class="ai-save-browse-btn" data-index="' + index + '" style="font-size:11px;padding:2px 6px;border:1px solid #ccc;border-radius:3px;background:white;cursor:pointer">📁</button></span>' +
                 '</div>';
         });
@@ -119,6 +85,7 @@ const SaveDialog = {
             '</div>';
 
         DialogStack.show('save', {
+            title: I18n.t('Save Confirmation'),
             body: html,
             onRender: function() {
                 var selectAll = document.getElementById('aiSaveSelectAll');
@@ -156,13 +123,11 @@ const SaveDialog = {
                             }
                             fileItems[index].saveDir = selectedDir;
                             fileItems[index].file._saveDir = selectedDir;
-                            var newPath = formatSavePath(selectedDir, fileItems[index].filePart);
-                            fileItems[index].path = newPath;
-                            fileItems[index].displayPath = newPath;
+                            var newSaveToDisplay = formatDisplayPath(selectedDir, fileItems[index].name);
                             var row = document.querySelector('.ai-save-row[data-index="' + index + '"]');
                             if (row) {
                                 var pathEl = row.querySelector('.ai-save-path');
-                                if (pathEl) pathEl.textContent = newPath;
+                                if (pathEl) pathEl.textContent = newSaveToDisplay;
                             }
                         });
                     };
@@ -180,13 +145,22 @@ const SaveDialog = {
                         var item = fileItems[index];
                         var f = item.file;
                         f._saveDir = item.saveDir;
-                        f._saveFilePart = item.filePart;
                         toSave.push(f);
                     });
 
                     if (!toSave.length) {
                         Toast.show(I18n.t('No files selected'), 'error');
                         return;
+                    }
+
+                    var conflicted = await SaveDialog._checkConflicts(toSave);
+                    if (conflicted.length > 0) {
+                        var msg = I18n.t('The following files have been modified externally:') + '\n\n';
+                        conflicted.forEach(function(c) {
+                            msg += '📄 ' + c.name + '\n';
+                        });
+                        msg += '\n' + I18n.t('Do you want to overwrite?');
+                        if (!confirm(msg)) return;
                     }
 
                     DialogStack.close();
@@ -204,7 +178,7 @@ const SaveDialog = {
                 await SaveDialog._saveOne(f);
                 saved++;
             } catch (e) {
-                Toast.show(I18n.t('Failed: {0}', getShortName(f.name)), 'error');
+                Toast.show(I18n.t('Failed: {0}', f.name), 'error');
             }
         }
         if (saved > 0) Toast.show(I18n.t('Saved {0} files', saved));
@@ -215,7 +189,7 @@ const SaveDialog = {
 
     _saveOne: async function(file) {
         var saveDir = file._saveDir || file.workDir || Config.mainDir;
-        var filename = file._saveFilePart || getShortName(file.name);
+        var filename = file.name;
 
         var body = { dir: saveDir, filename: filename, content: file.content };
 
@@ -235,34 +209,35 @@ const SaveDialog = {
     },
 
     _checkConflicts: async function(files) {
-        var conflicted = [];
-        for (var i = 0; i < files.length; i++) {
-            var f = files[i];
-            var saveDir = f._saveDir || f.workDir || Config.mainDir;
-            var filename = f._saveFilePart || getShortName(f.name);
+        var searchDirs = Config.workDirs || [];
+        var aiNames = files.map(function(f) { return f.name; });
 
-            try {
-                var r = await fetch(Config.serverUrl + '/api/files/list', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ dir: saveDir, flat: true })
-                });
-                var j = await r.json();
-                var listFiles = j.files || [];
-                var existing = null;
-                for (var k = 0; k < listFiles.length; k++) {
-                    if (listFiles[k].name === filename && !listFiles[k].isDir) {
-                        existing = listFiles[k];
-                        break;
-                    }
-                }
-                if (existing && f._origSize != null && f._origMtime != null) {
-                    if (existing.size !== f._origSize || existing.mtime !== f._origMtime) {
-                        conflicted.push({ name: filename, origSize: f._origSize, newSize: existing.size });
-                    }
-                }
-            } catch (e) {}
+        var matches = {};
+        try {
+            var fr = await fetch(Config.serverUrl + '/api/files/find', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ dirs: searchDirs, aiFiles: aiNames })
+            });
+            var fj = await fr.json();
+            matches = fj.matches || {};
+        } catch (e) {
+            return [];
         }
+
+        var conflicted = [];
+        files.forEach(function(f) {
+            var info = matches[f.name];
+            if (!info || info.content === undefined) return;
+
+            var aiContent = (f.content || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+            var origContent = (info.content || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+            if (aiContent === origContent) return;
+
+            conflicted.push({ name: f.name });
+        });
+
         return conflicted;
     }
 };

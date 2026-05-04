@@ -67,9 +67,15 @@ var DirPicker = {
             body: body,
             footer: footerHtml,
             onRender: function() {
+                var list = document.getElementById('aiPickerList');
+
                 document.getElementById('aiPickerConfirm').onclick = function() {
-                    var path = self._pathForSave();
-                    if (!path) { Toast.show('Invalid path', 'error'); return; }
+                    var path = self._currentPath;
+                    if (path === '__drives__') { Toast.show('Invalid path', 'error'); return; }
+                    var selected = list.querySelector('.ai-picker-item.active');
+                    if (selected && selected.dataset.fullpath) {
+                        path = selected.dataset.fullpath;
+                    }
                     if (self._onSelect) self._onSelect(path);
                     DialogStack.close();
                 };
@@ -94,9 +100,10 @@ var DirPicker = {
         });
     },
 
-    _pathForSave: function() {
-        if (this._currentPath === '__drives__') return '';
-        return this._currentPath;
+    _getDirName: function(fullPath) {
+        if (!fullPath) return '';
+        var parts = fullPath.replace(/\\/g, '/').split('/').filter(Boolean);
+        return parts[parts.length - 1] || fullPath;
     },
 
     _navigate: async function(dir) {
@@ -109,18 +116,35 @@ var DirPicker = {
         list.innerHTML = '<div style="text-align:center;color:#999;padding:20px">' + I18n.t('Loading...') + '</div>';
         if (dir === '__drives__') { this._loadDrives(); return; }
         try {
-            var r = await fetch(Config.serverUrl + '/api/files/list', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dir: dir, flat: true }) });
+            var r = await fetch(Config.serverUrl + '/api/files/list', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ dir: dir, flat: true })
+            });
             var j = await r.json();
             var files = j.files || [];
             var dirs = files.filter(function(f) { return f.isDir === true; });
             var html = '';
-            if (dirs.length === 0) html = '<div style="text-align:center;color:#999;padding:20px">' + I18n.t('No subfolders') + '</div>';
-            else { dirs.forEach(function(d) { html += '<div class="ai-picker-item" data-dir="' + Utils.escAttr(String(d.name || '')) + '" style="padding:6px 8px;cursor:pointer;border-bottom:1px solid #f0f0f0">📁 ' + Utils.esc(String(d.name || '')) + '</div>'; }); }
+            if (dirs.length === 0) {
+                html = '<div style="text-align:center;color:#999;padding:20px">' + I18n.t('No subfolders') + '</div>';
+            } else {
+                var self = this;
+                dirs.forEach(function(d) {
+                    var entryName = self._getDirName(d.fullPath || '');
+                    html += '<div class="ai-picker-item" data-fullpath="' + Utils.escAttr(String(d.fullPath || '')) + '" style="padding:6px 8px;cursor:pointer;border-bottom:1px solid #f0f0f0">📁 ' + Utils.esc(entryName) + '</div>';
+                });
+            }
             list.innerHTML = html;
             var self = this;
             list.querySelectorAll('.ai-picker-item').forEach(function(item) {
-                item.ondblclick = function() { var d = this.dataset.dir; self._navigate(self._currentPath.replace(/\/$/, '') + '/' + d); };
-                item.onclick = function() { list.querySelectorAll('.ai-picker-item').forEach(function(el) { el.style.background = ''; }); this.style.background = '#e3f2fd'; };
+                item.ondblclick = function() {
+                    var fp = this.dataset.fullpath;
+                    if (fp) self._navigate(fp);
+                };
+                item.onclick = function() {
+                    list.querySelectorAll('.ai-picker-item').forEach(function(el) { el.classList.remove('active'); });
+                    this.classList.add('active');
+                };
             });
         } catch (e) {
             list.innerHTML = '<div style="text-align:center;color:#dc3545;padding:20px">❌ ' + I18n.t('Cannot connect. Start node server.js') + '</div>';
@@ -135,10 +159,14 @@ var DirPicker = {
         if (!list) return;
         var self = this;
         var html = '';
-        drives.forEach(function(drive) { html += '<div class="ai-picker-item" data-dir="' + Utils.escAttr(String(drive || '')) + '" style="padding:6px 8px;cursor:pointer;border-bottom:1px solid #f0f0f0">💿 ' + Utils.esc(String(drive || '')) + '</div>'; });
+        drives.forEach(function(drive) {
+            html += '<div class="ai-picker-item" data-fullpath="' + Utils.escAttr(String(drive || '')) + '" style="padding:6px 8px;cursor:pointer;border-bottom:1px solid #f0f0f0">💿 ' + Utils.esc(String(drive || '')) + '</div>';
+        });
         if (!html) html = '<div style="text-align:center;color:#999;padding:20px">' + I18n.t('No subfolders') + '</div>';
         list.innerHTML = html;
-        list.querySelectorAll('.ai-picker-item').forEach(function(item) { item.ondblclick = function() { self._navigate(this.dataset.dir); }; });
+        list.querySelectorAll('.ai-picker-item').forEach(function(item) {
+            item.ondblclick = function() { self._navigate(this.dataset.fullpath); };
+        });
     },
 
     _renderBreadcrumb: function() {
@@ -147,15 +175,25 @@ var DirPicker = {
         var path = this._currentPath;
         if (path === '__drives__') { bc.innerHTML = '<strong>' + I18n.t('This PC') + '</strong>'; return; }
         var parts = path.replace(/\\/g, '/').split('/').filter(Boolean);
-        var html = ''; var current = ''; var self = this;
+        var html = '';
+        var current = '';
+        var self = this;
         parts.forEach(function(part, i) {
-            if (part.indexOf(':') !== -1) current = part + '/';
-            else current = current.replace(/\/$/, '') + '/' + part;
-            if (i === parts.length - 1) html += '<strong>' + Utils.esc(String(part)) + '</strong>';
-            else html += '<span class="ai-breadcrumb-link" data-path="' + Utils.escAttr(String(current)) + '" style="cursor:pointer;color:#007bff">' + Utils.esc(String(part)) + '</span> &gt; ';
+            if (part.indexOf(':') !== -1) {
+                current = part + '/';
+            } else {
+                current = current.replace(/\/$/, '') + '/' + part;
+            }
+            if (i === parts.length - 1) {
+                html += '<strong>' + Utils.esc(part) + '</strong>';
+            } else {
+                html += '<span class="ai-breadcrumb-link" data-path="' + Utils.escAttr(current) + '" style="cursor:pointer;color:#007bff">' + Utils.esc(part) + '</span> &gt; ';
+            }
         });
         bc.innerHTML = html;
-        bc.querySelectorAll('.ai-breadcrumb-link').forEach(function(link) { link.onclick = function() { self._navigate(this.dataset.path); }; });
+        bc.querySelectorAll('.ai-breadcrumb-link').forEach(function(link) {
+            link.onclick = function() { self._navigate(this.dataset.path); };
+        });
     },
 
     _updatePathInput: function() {
