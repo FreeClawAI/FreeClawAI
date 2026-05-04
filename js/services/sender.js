@@ -7,15 +7,11 @@ const Sender = {
         var inputVal = input ? input.value.trim() : '';
         var files = FileTree.getSelectedFiles();
         await this._doSend(inputVal, files);
-        var starBtn = document.getElementById('aiStarBtn');
-        if (starBtn) starBtn.style.display = 'inline-block';
     },
 
     sendDirect: async function(promptContent) {
         var files = FileTree.getSelectedFiles();
         await this._doSend(promptContent, files);
-        var starBtn = document.getElementById('aiStarBtn');
-        if (starBtn) starBtn.style.display = 'inline-block';
     },
 
     _doSend: async function(userInput, files) {
@@ -34,7 +30,7 @@ const Sender = {
         var editor = this._findEditor();
         if (editor) {
             editor.value = msg;
-            if (this._shouldTriggerInput()) editor.dispatchEvent(new Event('input', { bubbles: true }));
+            editor.dispatchEvent(new Event('input', { bubbles: true }));
             editor.focus();
         }
         Panel.close();
@@ -42,22 +38,10 @@ const Sender = {
     },
 
     _findEditor: function() {
-        var site = Extractor._getSite();
-        if (site && site.sender && site.sender.inputSelectors) {
-            for (var i = 0; i < site.sender.inputSelectors.length; i++) {
-                var el = document.querySelector(site.sender.inputSelectors[i]);
-                if (el) return el;
-            }
-        }
         var textareas = document.querySelectorAll('textarea');
         for (var i = 0; i < textareas.length; i++) {
             if (textareas[i].offsetHeight > 30 && !textareas[i].closest('#ai-file-panel')) return textareas[i];
         }
         return null;
-    },
-
-    _shouldTriggerInput: function() {
-        var site = Extractor._getSite();
-        return !site || !site.sender || site.sender.triggerInput !== false;
     }
 };

@@ -1,11 +1,12 @@
 // FreeClaw - Keyboard shortcuts
 const Keyboard = {
     init: function() {
+        var self = this;
         document.addEventListener('keydown', function(e) {
             var panel = document.getElementById('ai-file-panel');
             if (!panel || !panel.classList.contains('show')) return;
-            if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); Saver.saveSelected(); }
-            if ((e.ctrlKey || e.metaKey) && e.key === 'n') { e.preventDefault(); Keyboard._newFile(); }
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); SaveDialog.show(); }
+            if ((e.ctrlKey || e.metaKey) && e.key === 'n') { e.preventDefault(); self._newFile(); }
             if ((e.ctrlKey || e.metaKey) && e.key === 'f') { e.preventDefault(); var sf = document.getElementById('aiSearchFiles'); if (sf) sf.focus(); }
             if (e.key === 'Escape') Panel.close();
         });

@@ -57,39 +57,10 @@
 .ai-tree-file:hover{background:#f0f0f0}
 .ai-tree-file.ai-ai-file{background:#fff8e1}
 .ai-tree-mtime{font-size:10px;color:#999;margin-left:auto;flex-shrink:0;white-space:nowrap}
-
-/* 菜单下拉 */
-.ai-menu-dropdown {
-    position: fixed;
-    background: white;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    z-index: 10000001;
-    min-width: 160px;
-    padding: 4px 0;
-}
-.ai-menu-item {
-    padding: 8px 16px;
-    cursor: pointer;
-    font-size: 13px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-.ai-menu-item:hover {
-    background: #f0f0f0;
-}
-
-/* 保存对话框 */
-.ai-save-row {
-    display: flex;
-    align-items: center;
-    padding: 6px 0;
-    border-bottom: 1px solid #f0f0f0;
-}
-.ai-save-row:hover {
-    background: #fafafa;
-}
+.ai-menu-dropdown{position:fixed;background:white;border:1px solid #ddd;border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,0.15);z-index:10000001;min-width:160px;padding:4px 0}
+.ai-menu-item{padding:8px 16px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px}
+.ai-menu-item:hover{background:#f0f0f0}
+.ai-save-row{display:flex;align-items:center;padding:6px 0;border-bottom:1px solid #f0f0f0}
+.ai-save-row:hover{background:#fafafa}
 #ai-quick-save-btn{position:fixed;top:104px;right:12px;z-index:999999;width:36px;height:36px;border-radius:50%;background:#28a745;color:white;border:none;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.2)}
 #ai-quick-save-btn.hidden{display:none}

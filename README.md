@@ -34,46 +34,55 @@ Uses only Node.js built-in modules. **No npm install required.** Runs on `http:/
 
 ---
 
-## FreeClaw Protocol v1
+## The FreeClaw Protocol
 
-FreeClaw uses a simple protocol to identify files in AI replies. When asking AI for code, include this protocol in your prompt:
+FreeClaw defines a simple communication protocol between humans and AI for code delivery:
 
-### Format
+1. Each file begins with an h2 heading containing the **relative path from project root**
+2. The heading is immediately followed by a fenced code block with the **complete source code**
+3. FreeClaw extracts all files matching this pattern and saves them to your project
+
+### Protocol Specification
 
 ```
-// freeclaw:relative/path/to/file.ext
-complete source code
+## path/relative/to/project/root/filename.ext
+```language
+complete source code here - never truncated, never abbreviated
 ```
-
-### Rules
-
-1. Each file starts with `// freeclaw:relative/path/to/file.ext` on its own line
-2. The path is relative to the workspace root directory
-3. After the path line, output the **complete** source code — never use `...` or truncated
-4. Separate multiple files with a blank line
+```
 
 ### Example
 
-```
-// freeclaw:js/services/extractor.js
+````markdown
+## js/services/extractor.js
+```javascript
 const Extractor = {
     extract() {
-        const files = [];
-        const text = document.body.innerText;
-        const pattern = /\/\/ freeclaw:([^\n]+)\n([\s\S]*?)(?=\n\/\/ freeclaw:|$)/g;
-        let match;
-        while ((match = pattern.exec(text)) !== null) {
-            files.push({ name: match[1].trim(), content: match[2].trim() });
-        }
         return files;
     }
 };
 ```
 
+## js/ui/panel.js
+```javascript
+const Panel = {
+    open() { this.el.classList.add('show'); }
+};
 ```
-// freeclaw:panel.css
-#main { color: red; }
+
+## css/main.css
+```css
+#app { margin: 0; padding: 0; }
 ```
+
+## README.md
+```markdown
+# Project Title
+Content here.
+```
+````
+
+FreeClaw automatically creates subdirectories matching the path structure when saving files.
 
 ---
 
@@ -83,13 +92,11 @@ const Extractor = {
 
 Works directly on DeepSeek Chat. Lives inside the AI Chat page, **costs you zero tokens**.
 
-#### Save Files Locally
-
-**Quick Save (Recommended)**
+#### Quick Save (Recommended)
 
 Click the 💾 button in the top-right corner. The save dialog appears directly. Check files → Confirm save → Done. No panel needed.
 
-**Panel Save**
+#### Panel Save
 
 Click the 📁 button to open the main panel:
 - 🔍 **Extract**: Grab all code files from AI replies
@@ -128,20 +135,6 @@ Local code → Click 📁 → Select files → Send → AI reviews or modifies
 | Send local code to AI | Open → Copy → Paste | Click → Send |
 | API cost | Your own Key | 0 token |
 | Setup | Compilation needed | Zero dependencies |
-
----
-
-## vs OpenClaw / OpenCode
-
-| | FreeClaw | OpenClaw | OpenCode |
-|------|------|------|------|
-| Token cost | **Free** (parasitic) | Requires API Key | Requires API Key |
-| Installation | 0 dependencies | Needs setup | Needs setup |
-| File save | Direct to project dir | Via API | Via API |
-| Code extraction | Auto from DOM | N/A | N/A |
-| Multi-platform | DeepSeek | OpenAI API | OpenAI API |
-| Diff view | ✅ | ❌ | ❌ |
-| Quick Save | ✅ | ❌ | ❌ |
 
 ---
 
@@ -185,4 +178,3 @@ MIT License
 ---
 
 **Code AI, Free Forever.**
-```

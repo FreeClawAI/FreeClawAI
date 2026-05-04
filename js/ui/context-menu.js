@@ -17,7 +17,7 @@ const ContextMenu = {
             items.push({ text: I18n.t('Download'), action: function() { ContextMenu._download(filename); } });
         }
         if (type === 'ai' || type === 'user') {
-            items.push({ text: I18n.t('Save'), action: function() { Saver._batchSave([FileService.getFileByName(filename)].filter(Boolean)); } });
+            items.push({ text: I18n.t('Save'), action: function() { SaveDialog.show(); } });
             items.push({ text: I18n.t('Format Code'), action: function() { ContextMenu._formatFile(filename); } });
             items.push({ text: I18n.t('Rename'), action: function() { ContextMenu._rename(filename); } });
         }
