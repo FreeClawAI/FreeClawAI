@@ -34,20 +34,34 @@ node server.js
 
 ## FreeClaw 协议
 
-FreeClaw 定义了一套人与 AI 之间的简单通信协议，用于代码交付：
+FreeClaw 实现了 [FreeClaw Protocol v1](https://github.com/FreeClawAI/freeclaw-protocol) —— 一套基于 Markdown 的代码文件交付协议，用于 AI 向文件系统输出结构化代码。
 
-1. 每个文件以 h2 标题开头，标题内容为**项目根目录下的相对路径**
-2. 标题后紧跟一个带语言标记的代码块，包含**完整源代码**
-3. FreeClaw 自动提取所有符合此格式的文件并保存到你的项目
-
-### 协议规范
+### 语法格式
 
 ```
-## 项目根目录的相对路径/文件名.扩展名
-```语言
-完整的源代码——绝不截断、绝不省略
+## relative/path/to/file.ext
+```language
+complete source code
 ```
 ```
+
+### 核心规则
+
+1. 每个文件使用一个 h2 标题表示文件路径
+2. 文件路径必须是相对于项目根目录的路径（如 js/services/extractor.js）
+3. h2 标题后应紧跟一个代码块
+4. 解析时允许跳过空行或非代码元素，直到找到第一个代码块
+5. 每个 h2 只对应一个代码块
+6. 代码块必须包含完整源代码，不得截断或省略
+7. 文件路径必须为规范相对路径：
+   - 不得以 / 或 ./ 开头
+   - 不得包含 .. 或路径回退
+   - 使用正斜杠 /
+   - 不得包含额外描述
+8. 若存在多个代码块，仅第一个视为有效
+9. 语言标记仅用于展示，解析应以文件扩展名为准
+10. 代码块内容不能为空，必须包含有效代码
+11. 同一响应中不得出现重复路径；若出现，以最后一个为准
 
 ### 示例
 
@@ -61,26 +75,19 @@ const Extractor = {
 };
 ```
 
-## js/ui/panel.js
-```javascript
-const Panel = {
-    open() { this.el.classList.add('show'); }
-};
-```
-
 ## css/main.css
 ```css
-#app { margin: 0; padding: 0; }
+body {
+    margin: 0;
+}
 ```
 
 ## README.md
 ```markdown
-# 项目标题
-内容在这里。
+# 项目
+这是一个示例项目。
 ```
 ````
-
-FreeClaw 保存文件时会根据路径结构自动创建子目录。
 
 ---
 

@@ -36,20 +36,38 @@ Uses only Node.js built-in modules. **No npm install required.** Runs on `http:/
 
 ## The FreeClaw Protocol
 
-FreeClaw defines a simple communication protocol between humans and AI for code delivery:
+FreeClaw implements the [FreeClaw Protocol v1](https://github.com/FreeClawAI/freeclaw-protocol) — a Markdown-based protocol for structured code file delivery from AI to file systems.
 
-1. Each file begins with an h2 heading containing the **relative path from project root**
-2. The heading is immediately followed by a fenced code block with the **complete source code**
-3. FreeClaw extracts all files matching this pattern and saves them to your project
-
-### Protocol Specification
+### Syntax
 
 ```
-## path/relative/to/project/root/filename.ext
+## relative/path/to/file.ext
 ```language
-complete source code here - never truncated, never abbreviated
+complete source code
 ```
 ```
+
+### Core Rules
+
+1. Each file MUST be represented by one h2 heading
+2. The heading MUST contain a relative file path
+3. The path MUST NOT start with / or ./
+4. The path MUST NOT contain .. (no directory traversal)
+5. Only forward slashes (/) are allowed
+6. No extra text or annotations are allowed in the path
+
+7. The h2 heading MUST be followed by a code block
+8. Parsers MAY skip blank lines or non-structural elements before the code block
+9. Only the FIRST code block after an h2 is considered valid
+
+10. The code block MUST contain complete, non-truncated source code
+11. Empty code blocks are NOT allowed
+
+12. Each h2 corresponds to exactly one file
+13. Duplicate file paths SHOULD be avoided; if present, the last occurrence SHOULD win
+
+14. Language tags in code blocks are OPTIONAL and for readability only
+15. Parsers SHOULD rely on file extensions, not language tags
 
 ### Example
 
@@ -63,26 +81,19 @@ const Extractor = {
 };
 ```
 
-## js/ui/panel.js
-```javascript
-const Panel = {
-    open() { this.el.classList.add('show'); }
-};
-```
-
 ## css/main.css
 ```css
-#app { margin: 0; padding: 0; }
+body {
+    margin: 0;
+}
 ```
 
 ## README.md
 ```markdown
-# Project Title
-Content here.
+# Project
+This is a sample project.
 ```
 ````
-
-FreeClaw automatically creates subdirectories matching the path structure when saving files.
 
 ---
 
