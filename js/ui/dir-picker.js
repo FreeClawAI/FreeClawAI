@@ -119,7 +119,7 @@ var DirPicker = {
             var r = await fetch(Config.serverUrl + '/api/files/list', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ dir: dir, flat: true })
+                body: JSON.stringify({ dir: dir })
             });
             var j = await r.json();
             var files = j.files || [];

@@ -92,6 +92,7 @@ var FreeClawFirstRun = true;
 
     var heartbeatTimer = null;
     var wasConnected = false;
+    var panelWasOpen = false;
 
     function updateStatusLight(connected) {
         var btn = document.getElementById('aiConfigBtn');
@@ -104,18 +105,28 @@ var FreeClawFirstRun = true;
                 btn.classList.add('disconnected');
             }
         }
-        if (wasConnected && !connected) {
-            FreeClawFirstRun = false;
-            SettingsDialog.show();
-            Toast.show(I18n.t('Cannot connect. Start node server.js'), 'error');
-        }
-        wasConnected = connected;
     }
 
     function heartbeat() {
         var url = Config.serverUrl;
         if (!url) { updateStatusLight(false); return; }
-        fetch(url + '/api/ping').then(function(r) { updateStatusLight(r.ok); }).catch(function() { updateStatusLight(false); });
+        fetch(url + '/api/ping').then(function(r) {
+            var connected = r.ok;
+            updateStatusLight(connected);
+            if (wasConnected && !connected) {
+                Toast.show(I18n.t('Cannot connect. Start node server.js'), 'error');
+            }
+            if (!wasConnected && connected && panelWasOpen) {
+                FileTree.refresh();
+                FileTree.initEvents();
+                PromptsBar.load();
+                TemplatesBar.render();
+            }
+            wasConnected = connected;
+        }).catch(function() {
+            updateStatusLight(false);
+            wasConnected = false;
+        });
     }
 
     var _origOpen = Panel.open;
@@ -124,6 +135,7 @@ var FreeClawFirstRun = true;
         _bindEvents();
         heartbeat();
         heartbeatTimer = setInterval(heartbeat, 5000);
+        panelWasOpen = true;
 
         var connected = false;
         try { var r = await fetch(Config.serverUrl + '/api/ping'); connected = r.ok; } catch (e) {}
@@ -133,7 +145,6 @@ var FreeClawFirstRun = true;
             if (FreeClawFirstRun) {
                 FreeClawFirstRun = false;
             }
-            SettingsDialog.show();
             Toast.show(I18n.t('Cannot connect. Start node server.js'), 'error');
         } else {
             FreeClawFirstRun = false;
@@ -142,6 +153,7 @@ var FreeClawFirstRun = true;
             await PromptsBar.load();
             TemplatesBar.render();
         }
+        wasConnected = connected;
     };
 
     var _origClose = Panel.close;
@@ -150,13 +162,7 @@ var FreeClawFirstRun = true;
             if (!confirm(I18n.t('Unsaved changes. Close anyway?'))) return;
         }
         clearInterval(heartbeatTimer);
+        panelWasOpen = false;
         _origClose.call(Panel);
     };
-
-    document.addEventListener('keydown', function(e) {
-        if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-            e.preventDefault();
-            SaveDialog.show();
-        }
-    });
 })();

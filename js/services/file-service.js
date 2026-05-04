@@ -183,9 +183,7 @@ const FileService = {
             var info = matches[aiFile.name];
 
             if (info && info.content !== undefined) {
-                var aiContent = (aiFile.content || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-                var origContent = (info.content || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-                if (aiContent === origContent) {
+                if (Utils.isSameContent(aiFile.content, info.content)) {
                     return;
                 }
             }

@@ -15,5 +15,12 @@ const Utils = {
     debounce(fn, delay) {
         let timer;
         return function(...args) { clearTimeout(timer); timer = setTimeout(() => fn.apply(this, args), delay); };
+    },
+    normalizeContent(content) {
+        if (!content) return '';
+        return content.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    },
+    isSameContent(a, b) {
+        return this.normalizeContent(a) === this.normalizeContent(b);
     }
 };

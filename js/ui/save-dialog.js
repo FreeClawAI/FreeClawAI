@@ -116,8 +116,11 @@ const SaveDialog = {
                     btn.onclick = function(e) {
                         e.stopPropagation();
                         var index = parseInt(btn.dataset.index);
+                        var originalWorkDir = fileItems[index].file.workDir || Config.mainDir;
                         DirPicker.show(fileItems[index].saveDir, function(selectedDir) {
-                            if (!isPathInWorkDirs(selectedDir)) {
+                            var normalized = selectedDir.replace(/\\/g, '/');
+                            var origNormalized = originalWorkDir.replace(/\\/g, '/');
+                            if (normalized.indexOf(origNormalized) !== 0) {
                                 Toast.show(I18n.t('Can only save to work directories'), 'error');
                                 return;
                             }
@@ -230,10 +233,7 @@ const SaveDialog = {
             var info = matches[f.name];
             if (!info || info.content === undefined) return;
 
-            var aiContent = (f.content || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-            var origContent = (info.content || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-
-            if (aiContent === origContent) return;
+            if (Utils.isSameContent(f.content, info.content)) return;
 
             conflicted.push({ name: f.name });
         });
