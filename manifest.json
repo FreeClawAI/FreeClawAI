@@ -19,6 +19,7 @@
       "https://gemini.google.com/*"
     ],
     "js": [
+      "lib/diff.js",
       "lib/beautify.js",
       "lib/beautify-css.js",
       "lib/beautify-html.js",
@@ -34,7 +35,7 @@
       "js/services/sender.js",
       "js/services/formatter.js",
       "js/services/quick-save.js",
-      "js/services/sync-btn.js",
+      "js/services/send-btn.js",
       "js/ui/dialog.js",
       "js/ui/toast.js",
       "js/ui/panel.js",
@@ -45,7 +46,7 @@
       "js/ui/file-tree.js",
       "js/ui/diff-dialog.js",
       "js/ui/save-dialog.js",
-      "js/ui/sync-dialog.js",
+      "js/ui/send-dialog.js",
       "js/ui/settings-dialog.js",
       "js/ui/context-menu.js",
       "js/ui/dir-picker.js",

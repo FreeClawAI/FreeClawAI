@@ -1,5 +1,5 @@
-// FreeClaw - Sync Button (save files and send to AI)
-const SyncBtn = {
+// FreeClaw - Send Button (open send dialog with file tree)
+const SendBtn = {
     _btn: null,
     _busy: false,
 
@@ -8,8 +8,8 @@ const SyncBtn = {
 
         this._btn = document.createElement('button');
         this._btn.id = 'ai-sync-btn';
-        this._btn.textContent = '🔄';
-        this._btn.title = 'FreeClaw - Sync Files';
+        this._btn.textContent = '📤';
+        this._btn.title = 'FreeClaw - Send Files';
         var self = this;
         this._btn.onclick = async function() {
             if (self._busy) return;
@@ -21,7 +21,7 @@ const SyncBtn = {
                     return;
                 }
                 await FileService.refresh();
-                SyncDialog.show();
+                SendDialog.show();
             } finally {
                 self._busy = false;
             }

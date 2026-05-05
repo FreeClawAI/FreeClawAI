@@ -15,18 +15,31 @@ const Sender = {
     },
 
     _doSend: async function(userInput, files) {
-        var msg = userInput || '';
+        var msg = '';
+
+        if (Config.workDirs && Config.workDirs.length > 0) {
+            msg += '## 工作目录: ' + Config.mainDir + '\n\n';
+        }
+
+        if (userInput) {
+            msg += userInput + '\n\n';
+        }
+
         if (files.length > 0) {
-            if (msg) msg += '\n\n' + I18n.t('--- Attachments ---') + '\n';
-            else msg = I18n.t('--- Attachments ---') + '\n';
             files.forEach(function(f) {
-                msg += '\n📁 ' + (f._dir || Config.mainDir) + '/' + f.name + '\n' + (f.content || '');
+                var name = f.name || '';
+                var content = f.content || '';
+                msg += '## ' + name + '\n```\n' + content + '\n```\n\n';
             });
         }
+
+        if (!msg.trim()) return;
+
         if (Utils.countChars(msg) > this.MAX_CHARS) {
             Toast.show(I18n.t('Content exceeds limit ({0}/{1})', Utils.countChars(msg), this.MAX_CHARS), 'error');
             return;
         }
+
         var editor = this._findEditor();
         if (editor) {
             editor.value = msg;

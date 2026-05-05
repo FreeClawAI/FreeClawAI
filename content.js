@@ -6,7 +6,7 @@ var FreeClawFirstRun = true;
     Formatter.load();
     Panel.init();
     QuickSave.init();
-    SyncBtn.init();
+    SendBtn.init();
 
     DB.open().then(function() {
         return Config.load();

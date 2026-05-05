@@ -70,7 +70,7 @@ const Panel = {
         this.overlay.classList.add('show');
         this.btn.classList.add('hidden');
         QuickSave.hide();
-        SyncBtn.hide();
+        SendBtn.hide();
     },
 
     close: function() {
@@ -82,7 +82,7 @@ const Panel = {
         this.overlay.classList.remove('show');
         this.btn.classList.remove('hidden');
         QuickSave.show();
-        SyncBtn.show();
+        SendBtn.show();
         DialogStack.closeAll();
     }
 };
