@@ -169,22 +169,14 @@ const SaveDialog = {
                         var f = item.file;
                         f._savePath = item.savePath;
                         f._saveDir = item.workDir;
+                        f._newName = item.name;
+                        f._origName = item._origName;
                         toSave.push(f);
                     });
 
                     if (!toSave.length) {
                         Toast.show(I18n.t('No files selected'), 'error');
                         return;
-                    }
-
-                    var conflicted = await SaveDialog._checkConflicts(toSave);
-                    if (conflicted.length > 0) {
-                        var msg = I18n.t('The following files have been modified externally:') + '\n\n';
-                        conflicted.forEach(function(c) {
-                            msg += '📄 ' + c.name + '\n';
-                        });
-                        msg += '\n' + I18n.t('Do you want to overwrite?');
-                        if (!confirm(msg)) return;
                     }
 
                     DialogStack.close();
@@ -196,10 +188,15 @@ const SaveDialog = {
 
     _doSave: async function(files) {
         var saved = 0;
+        var pathChanges = [];
         for (var i = 0; i < files.length; i++) {
             var f = files[i];
             try {
                 await SaveDialog._saveOne(f);
+                if (f._origName && f._newName && f._origName !== f._newName) {
+                    pathChanges.push({ from: f._origName, to: f._newName });
+                }
+                FileService.removeAiFile(f._origName || f.name);
                 saved++;
             } catch (e) {
                 Toast.show(I18n.t('Failed: {0}', f.name), 'error');
@@ -208,6 +205,21 @@ const SaveDialog = {
         if (saved > 0) Toast.show(I18n.t('Saved {0} files', saved));
         await FileService.refreshAndRender();
         Preview.show(null);
+
+        if (pathChanges.length > 0) {
+            var msg = '以下文件路径已变更:\n';
+            pathChanges.forEach(function(c) {
+                msg += c.from + ' → ' + c.to + '\n';
+            });
+            msg += '\n请记住这些变更。';
+            Panel.close();
+            var editor = Sender._findEditor();
+            if (editor) {
+                editor.value = msg;
+                editor.dispatchEvent(new Event('input', { bubbles: true }));
+                editor.focus();
+            }
+        }
     },
 
     _saveOne: async function(file) {

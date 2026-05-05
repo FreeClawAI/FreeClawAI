@@ -142,21 +142,52 @@ const FileTree = {
 
             var fileEl = e.target.closest('.ai-tree-file');
             if (fileEl) {
-                var fileName = fileEl.dataset.name, fileDir = fileEl.dataset.workDir || fileEl.dataset.dir;
-                var fileSize = parseInt(fileEl.dataset.size) || 0, fileType = fileEl.dataset.filetype || 'original';
+                var fileName = fileEl.dataset.name;
+                var fileDir = fileEl.dataset.workDir || fileEl.dataset.dir;
+                var fileSize = parseInt(fileEl.dataset.size) || 0;
+                var fileType = fileEl.dataset.filetype || 'original';
+
                 if (fileDir) FileService.setActiveDir(fileDir);
-                if (self._isMediaFile(fileName)) { self._openRaw(fileDir, fileName); return; }
-                if (fileSize > 10485760) {
-                    Preview.show({ name: getShortName(fileName), content: I18n.t('[File too large to preview]') + ' (' + self._formatSize(fileSize) + ')\n\n' + I18n.t('Opening in browser...') });
-                    self._openRaw(fileDir, fileName); return;
+
+                if (self._isMediaFile(fileName)) {
+                    self._openRaw(fileDir, fileName);
+                    return;
                 }
-                var file = FileService.getFileByName(fileName, 'original');
-                if (file) { await self._loadContent(file, file.workDir || fileDir); return; }
-                file = FileService.getFileByName(fileName, 'ai');
-                if (file && file.content) { Preview.show(file); return; }
-                file = FileService.getFileByName(fileName, 'user');
-                if (file && file.content) { Preview.show(file); Editor.startEdit(file); return; }
-                if (file && file.fileType === 'original' && !file.content) { await self._loadContent(file, file.workDir || fileDir); return; }
+
+                if (fileSize > 10485760) {
+                    Preview.show({
+                        name: getShortName(fileName),
+                        content: I18n.t('[File too large to preview]') + ' (' + self._formatSize(fileSize) + ')\n\n' + I18n.t('Opening in browser...')
+                    });
+                    self._openRaw(fileDir, fileName);
+                    return;
+                }
+
+                var file = FileService.getFileByName(fileName, fileType);
+
+                if (!file) {
+                    return;
+                }
+
+                if (fileType === 'original') {
+                    await self._loadContent(file, file.workDir || fileDir);
+                    return;
+                }
+
+                if (fileType === 'ai') {
+                    if (file.content) {
+                        Preview.show(file);
+                    }
+                    return;
+                }
+
+                if (fileType === 'user') {
+                    if (file.content) {
+                        Preview.show(file);
+                        Editor.startEdit(file);
+                    }
+                    return;
+                }
             }
         });
 
