@@ -176,7 +176,17 @@ const FileTree = {
 
                 if (fileType === 'ai') {
                     if (file.content) {
-                        Preview.show(file);
+                        var origFile = FileService.getFileByName(fileName, 'original');
+                        if (origFile) {
+                            await self._loadContent(origFile, origFile.workDir || fileDir);
+                            if (origFile.content) {
+                                DiffDialog._render(fileName, origFile.content, file.content);
+                            } else {
+                                Preview.show(file);
+                            }
+                        } else {
+                            Preview.show(file);
+                        }
                     }
                     return;
                 }

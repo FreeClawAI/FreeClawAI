@@ -23,7 +23,7 @@ const SaveDialog = {
             if (!multiWorkspace) {
                 return name;
             }
-            return wdName + ':' + name;
+            return '[' + wdName + ']:' + name;
         }
 
         function findWorkDir(fullPath) {
@@ -76,10 +76,11 @@ const SaveDialog = {
 
         html += '<div style="max-height:350px;overflow:auto" id="aiSaveFileList">';
         fileItems.forEach(function(item, index) {
-            var saveToDisplay = formatDisplayPath(item.workDir, item._origName);
+            var fileDisplay = formatDisplayPath(item.workDir, item._origName);
+            var saveToDisplay = formatDisplayPath(item.workDir, item.name);
             html += '<div class="ai-save-row" data-index="' + index + '" style="display:flex;align-items:center;padding:6px 0;border-bottom:1px solid #f0f0f0">' +
                 '<span style="width:28px"><input type="checkbox" class="ai-save-check" data-index="' + index + '" checked></span>' +
-                '<span class="ai-save-file-col" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📄 ' + Utils.esc(item.displayPath) + '</span>' +
+                '<span class="ai-save-file-col" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + Utils.esc(fileDisplay) + '</span>' +
                 '<span style="width:70px;text-align:right;font-size:11px;color:#999">' + formatSizeForList(item.size) + '</span>' +
                 '<span class="ai-save-path" style="flex:1;padding-left:8px;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#333">' + Utils.esc(saveToDisplay) + '</span>' +
                 '<span style="width:40px;text-align:center"><button class="ai-save-browse-btn" data-index="' + index + '" style="font-size:11px;padding:2px 6px;border:1px solid #ccc;border-radius:3px;background:white;cursor:pointer">📁</button></span>' +
@@ -150,7 +151,7 @@ const SaveDialog = {
                                 var pathEl = row.querySelector('.ai-save-path');
                                 if (pathEl) pathEl.textContent = newDisplay;
                                 var fileCol = row.querySelector('.ai-save-file-col');
-                                if (fileCol) fileCol.innerHTML = '📄 ' + Utils.esc(newDisplay);
+                                if (fileCol) fileCol.innerHTML = Utils.esc(newDisplay);
                             }
                         });
                     };

@@ -16,16 +16,6 @@ const QuickSave = {
             self._busy = true;
             try {
                 await FileService.refreshAndRender();
-
-                var aiFiles = FileService.getUnsavedAiFiles();
-                var userFiles = FileService.getUserFiles();
-                var allFiles = aiFiles.concat(userFiles);
-
-                if (!allFiles.length) {
-                    Toast.show(I18n.t('No files to save'), 'error');
-                    return;
-                }
-
                 SaveDialog.show();
             } finally {
                 self._busy = false;

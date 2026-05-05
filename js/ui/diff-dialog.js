@@ -10,35 +10,79 @@ const DiffDialog = {
         if (!origFile) return;
         FileTree._loadContent(origFile, origFile._dir || Config.mainDir).then(function() {
             if (!origFile.content) return;
-            DiffDialog._render(filename, origFile.content, aiFile.content);
+            DiffDialog._render(filename, origFile.content, aiFile.content, aiFile);
         });
     },
 
-    _render: function(filename, original, modified) {
+    _render: function(filename, original, modified, aiFile) {
         var origLines = original.split('\n');
         var modLines = modified.split('\n');
         var diff = this._simpleDiff(origLines, modLines);
         var adds = diff.filter(function(d) { return d.type === 'add'; }).length;
         var dels = diff.filter(function(d) { return d.type === 'del'; }).length;
+        var wd = Config.mainDir;
+        if (aiFile && aiFile.workDir) wd = aiFile.workDir;
+        var wdName = wd.split('\\').pop().split('/').pop();
+        var savePath = wd.replace(/\\/g, '/').replace(/\/$/, '') + '/' + filename;
+        var displayPath = '[' + wdName + ']:' + filename;
+
+        var workDirs = Config.workDirs || [];
+        function findWorkDir(fullPath) {
+            var normalized = fullPath.replace(/\\/g, '/');
+            for (var i = 0; i < workDirs.length; i++) {
+                var d = workDirs[i].replace(/\\/g, '/');
+                if (normalized.indexOf(d) === 0) return workDirs[i];
+            }
+            return null;
+        }
+        function extractRelativeName(fullPath, workDir) {
+            var normalized = fullPath.replace(/\\/g, '/');
+            var w = workDir.replace(/\\/g, '/').replace(/\/$/, '');
+            var name = normalized.substring(w.length);
+            if (name.charAt(0) === '/') name = name.substring(1);
+            return name;
+        }
 
         var body =
-            '<div style="display:flex;gap:8px;margin-bottom:8px;font-size:12px">' +
-                '<div style="flex:1"><strong>📄 ' + I18n.t('Original') + '</strong> (' + origLines.length + ')</div>' +
-                '<div style="flex:1"><strong>🤖 ' + I18n.t('AI') + '</strong> (' + modLines.length + ')</div>' +
+            '<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;padding:10px 14px;background:#f8f9fa;border-radius:6px">' +
+                '<div style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600">' +
+                    '<span>📄</span><span>' + Utils.esc(filename) + '</span>' +
+                    '<span style="font-size:11px;color:#999;font-weight:400">(' + origLines.length + ' / ' + modLines.length + ')</span>' +
+                '</div>' +
+                '<div style="flex:1"></div>' +
+                '<div style="display:flex;align-items:center;gap:8px;font-size:12px">' +
+                    '<span style="color:#666">' + I18n.t('Save to') + ':</span>' +
+                    '<span id="aiDiffSavePath" style="background:white;padding:4px 10px;border:1px solid #ddd;border-radius:4px">' + Utils.esc(displayPath) + '</span>' +
+                    '<button id="aiDiffChangePath" style="padding:4px 8px;border:1px solid #ccc;border-radius:4px;background:white;cursor:pointer;font-size:12px">📁</button>' +
+                '</div>' +
             '</div>' +
-            '<div style="max-height:55vh;overflow:auto;font-family:monospace;font-size:12px">';
-
+            '<div style="display:flex;gap:0;border:1px solid #ddd;border-radius:6px;overflow:hidden;max-height:55vh">' +
+                '<div style="flex:1;overflow:auto;font-family:monospace;font-size:12px;border-right:1px solid #eee">' +
+                    '<div style="padding:6px 12px;background:#f0f0f0;border-bottom:1px solid #ddd;font-size:11px;color:#666;position:sticky;top:0">' + I18n.t('Original') + '</div>' +
+                    '<div style="padding:4px 0">';
         diff.forEach(function(d) {
-            var bg = d.type === 'add' ? '#e6ffe6' : d.type === 'del' ? '#ffe6e6' : 'transparent';
-            var sign = d.type === 'add' ? '+' : d.type === 'del' ? '-' : ' ';
-            body += '<div style="display:flex;background:' + bg + '">' +
-                '<div style="width:40px;text-align:right;color:#999;padding:1px 6px;flex-shrink:0">' + (d.oldLine || '') + '</div>' +
-                '<div style="width:40px;text-align:right;color:#999;padding:1px 6px;flex-shrink:0">' + (d.newLine || '') + '</div>' +
-                '<div style="flex:1;padding:1px 6px">' + sign + ' ' + Utils.esc(d.text) + '</div>' +
+            var bg = (d.type === 'del' || d.type === 'add') ? '#fff3f3' : 'transparent';
+            body += '<div style="display:flex;background:' + bg + ';min-height:20px">' +
+                '<div style="width:40px;text-align:right;color:#999;padding:1px 8px;flex-shrink:0;font-size:11px">' + (d.oldLine || '') + '</div>' +
+                '<div style="flex:1;padding:1px 8px">' + (d.type !== 'add' ? Utils.esc(d.text) : '') + '</div>' +
             '</div>';
         });
-
-        body += '</div><div style="margin-top:8px;color:#666;font-size:12px">' + I18n.t('+{0} -{1}', adds, dels) + '</div>';
+        body += '</div></div>' +
+                '<div style="flex:1;overflow:auto;font-family:monospace;font-size:12px">' +
+                    '<div style="padding:6px 12px;background:#f0f0f0;border-bottom:1px solid #ddd;font-size:11px;color:#666;position:sticky;top:0">' + I18n.t('AI') + '</div>' +
+                    '<div style="padding:4px 0">';
+        diff.forEach(function(d) {
+            var bg = (d.type === 'add' || d.type === 'del') ? '#f0fff0' : 'transparent';
+            body += '<div style="display:flex;background:' + bg + ';min-height:20px">' +
+                '<div style="width:40px;text-align:right;color:#999;padding:1px 8px;flex-shrink:0;font-size:11px">' + (d.newLine || '') + '</div>' +
+                '<div style="flex:1;padding:1px 8px">' + (d.type !== 'del' ? Utils.esc(d.text) : '') + '</div>' +
+            '</div>';
+        });
+        body += '</div></div></div>' +
+            '<div style="margin-top:8px;display:flex;align-items:center;gap:12px;font-size:12px;color:#666">' +
+                '<span style="color:#28a745">+' + adds + '</span>' +
+                '<span style="color:#dc3545">-' + dels + '</span>' +
+            '</div>';
 
         DialogStack.show('diff', {
             title: I18n.t('Diff: {0}', Utils.esc(filename)),
@@ -46,11 +90,41 @@ const DiffDialog = {
             buttons: [
                 { text: I18n.t('Confirm Overwrite'), id: 'aiDiffConfirm', primary: true, onClick: function() {
                     DialogStack.close();
-                    var aiFiles = FileService.getAiFiles().filter(function(f) { return f.name === filename; });
-                    if (aiFiles.length > 0) Saver._batchSave(aiFiles);
+                    var f = aiFile || {};
+                    f._savePath = savePath;
+                    f.content = modified;
+                    SaveDialog._saveOne(f).then(function() {
+                        FileService.removeAiFile(filename);
+                        FileService.refreshAndRender();
+                        Preview.show(null);
+                        Toast.show(I18n.t('Saved {0} files', 1));
+                    }).catch(function(e) {
+                        Toast.show(I18n.t('Failed: {0}', filename), 'error');
+                    });
                 }},
                 { text: I18n.t('Cancel'), id: 'aiDiffCancel', onClick: function() { DialogStack.close(); } }
-            ]
+            ],
+            onRender: function() {
+                document.getElementById('aiDiffChangePath').onclick = function(e) {
+                    e.stopPropagation();
+                    DirPicker.show(wd, function(selectedDir) {
+                        var foundWorkDir = findWorkDir(selectedDir);
+                        if (!foundWorkDir) {
+                            Toast.show(I18n.t('Can only save to work directories'), 'error');
+                            return;
+                        }
+                        var pureName = Utils.getPureFileName(filename);
+                        var fullSavePath = selectedDir.replace(/\\/g, '/').replace(/\/$/, '') + '/' + pureName;
+                        var relativeName = extractRelativeName(fullSavePath, foundWorkDir);
+                        wd = foundWorkDir;
+                        savePath = fullSavePath;
+                        filename = relativeName;
+                        displayPath = '[' + foundWorkDir.split('\\').pop().split('/').pop() + ']:' + relativeName;
+                        var pathEl = document.getElementById('aiDiffSavePath');
+                        if (pathEl) pathEl.textContent = displayPath;
+                    });
+                };
+            }
         });
     },
 
