@@ -44,48 +44,42 @@ const DiffDialog = {
         }
 
         var body =
-            '<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;padding:10px 14px;background:#f8f9fa;border-radius:6px">' +
-                '<div style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600">' +
-                    '<span>📄</span><span>' + Utils.esc(filename) + '</span>' +
-                    '<span style="font-size:11px;color:#999;font-weight:400">(' + origLines.length + ' / ' + modLines.length + ')</span>' +
-                '</div>' +
-                '<div style="flex:1"></div>' +
-                '<div style="display:flex;align-items:center;gap:8px;font-size:12px">' +
-                    '<span style="color:#666">' + I18n.t('Save to') + ':</span>' +
-                    '<span id="aiDiffSavePath" style="background:white;padding:4px 10px;border:1px solid #ddd;border-radius:4px">' + Utils.esc(displayPath) + '</span>' +
-                    '<button id="aiDiffChangePath" style="padding:4px 8px;border:1px solid #ccc;border-radius:4px;background:white;cursor:pointer;font-size:12px">📁</button>' +
-                '</div>' +
+            '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:12px;color:#666">' +
+                '<span>' + I18n.t('Save to') + ':</span>' +
+                '<span id="aiDiffSavePath" style="background:white;padding:2px 8px;border:1px solid #ddd;border-radius:3px">' + Utils.esc(displayPath) + '</span>' +
+                '<button id="aiDiffChangePath" style="padding:2px 6px;border:1px solid #ccc;border-radius:3px;background:white;cursor:pointer;font-size:11px">📁</button>' +
+                '<span style="margin-left:auto;font-size:11px">' +
+                    '<span style="color:#28a745">+' + adds + '</span> ' +
+                    '<span style="color:#dc3545">-' + dels + '</span> ' +
+                    '(' + origLines.length + ' / ' + modLines.length + ')' +
+                '</span>' +
             '</div>' +
-            '<div style="display:flex;gap:0;border:1px solid #ddd;border-radius:6px;overflow:hidden;max-height:55vh">' +
-                '<div style="flex:1;overflow:auto;font-family:monospace;font-size:12px;border-right:1px solid #eee">' +
-                    '<div style="padding:6px 12px;background:#f0f0f0;border-bottom:1px solid #ddd;font-size:11px;color:#666;position:sticky;top:0">' + I18n.t('Original') + '</div>' +
-                    '<div style="padding:4px 0">';
+            '<div style="display:flex;gap:0;border:1px solid #ddd;border-radius:4px;overflow:hidden;max-height:70vh;min-height:40vh">' +
+                '<div id="aiDiffLeft" style="flex:1;overflow:auto;font-family:monospace;font-size:12px;border-right:1px solid #eee">' +
+                    '<div style="padding:3px 10px;background:#f5f5f5;border-bottom:1px solid #eee;font-size:11px;color:#888">' + I18n.t('Original') + '</div>' +
+                    '<div style="padding:2px 0">';
         diff.forEach(function(d) {
             var bg = (d.type === 'del' || d.type === 'add') ? '#fff3f3' : 'transparent';
-            body += '<div style="display:flex;background:' + bg + ';min-height:20px">' +
-                '<div style="width:40px;text-align:right;color:#999;padding:1px 8px;flex-shrink:0;font-size:11px">' + (d.oldLine || '') + '</div>' +
-                '<div style="flex:1;padding:1px 8px">' + (d.type !== 'add' ? Utils.esc(d.text) : '') + '</div>' +
+            body += '<div style="display:flex;background:' + bg + ';min-height:18px;white-space:pre">' +
+                '<div style="width:36px;text-align:right;color:#999;padding:0 6px;flex-shrink:0;font-size:11px">' + (d.oldLine || '') + '</div>' +
+                '<div style="padding:0 6px;overflow:hidden">' + (d.type !== 'add' ? Utils.esc(d.text) : '') + '</div>' +
             '</div>';
         });
         body += '</div></div>' +
-                '<div style="flex:1;overflow:auto;font-family:monospace;font-size:12px">' +
-                    '<div style="padding:6px 12px;background:#f0f0f0;border-bottom:1px solid #ddd;font-size:11px;color:#666;position:sticky;top:0">' + I18n.t('AI') + '</div>' +
-                    '<div style="padding:4px 0">';
+                '<div id="aiDiffRight" style="flex:1;overflow:auto;font-family:monospace;font-size:12px">' +
+                    '<div style="padding:3px 10px;background:#f5f5f5;border-bottom:1px solid #eee;font-size:11px;color:#888">' + I18n.t('AI') + '</div>' +
+                    '<div style="padding:2px 0">';
         diff.forEach(function(d) {
             var bg = (d.type === 'add' || d.type === 'del') ? '#f0fff0' : 'transparent';
-            body += '<div style="display:flex;background:' + bg + ';min-height:20px">' +
-                '<div style="width:40px;text-align:right;color:#999;padding:1px 8px;flex-shrink:0;font-size:11px">' + (d.newLine || '') + '</div>' +
-                '<div style="flex:1;padding:1px 8px">' + (d.type !== 'del' ? Utils.esc(d.text) : '') + '</div>' +
+            body += '<div style="display:flex;background:' + bg + ';min-height:18px;white-space:pre">' +
+                '<div style="width:36px;text-align:right;color:#999;padding:0 6px;flex-shrink:0;font-size:11px">' + (d.newLine || '') + '</div>' +
+                '<div style="padding:0 6px;overflow:hidden">' + (d.type !== 'del' ? Utils.esc(d.text) : '') + '</div>' +
             '</div>';
         });
-        body += '</div></div></div>' +
-            '<div style="margin-top:8px;display:flex;align-items:center;gap:12px;font-size:12px;color:#666">' +
-                '<span style="color:#28a745">+' + adds + '</span>' +
-                '<span style="color:#dc3545">-' + dels + '</span>' +
-            '</div>';
+        body += '</div></div></div>';
 
         DialogStack.show('diff', {
-            title: I18n.t('Diff: {0}', Utils.esc(filename)),
+            title: null,
             body: body,
             buttons: [
                 { text: I18n.t('Confirm Overwrite'), id: 'aiDiffConfirm', primary: true, onClick: function() {
@@ -96,7 +90,6 @@ const DiffDialog = {
                     SaveDialog._saveOne(f).then(function() {
                         FileService.removeAiFile(filename);
                         FileService.refreshAndRender();
-                        Preview.show(null);
                         Toast.show(I18n.t('Saved {0} files', 1));
                     }).catch(function(e) {
                         Toast.show(I18n.t('Failed: {0}', filename), 'error');
@@ -105,6 +98,30 @@ const DiffDialog = {
                 { text: I18n.t('Cancel'), id: 'aiDiffCancel', onClick: function() { DialogStack.close(); } }
             ],
             onRender: function() {
+                var container = document.getElementById('aiDialog');
+                if (container) {
+                    container.style.minWidth = '90%';
+                    container.style.maxWidth = '95%';
+                }
+
+                var leftPanel = document.getElementById('aiDiffLeft');
+                var rightPanel = document.getElementById('aiDiffRight');
+                var syncScroll = false;
+                leftPanel.addEventListener('scroll', function() {
+                    if (!syncScroll) {
+                        syncScroll = true;
+                        rightPanel.scrollTop = leftPanel.scrollTop;
+                        syncScroll = false;
+                    }
+                });
+                rightPanel.addEventListener('scroll', function() {
+                    if (!syncScroll) {
+                        syncScroll = true;
+                        leftPanel.scrollTop = rightPanel.scrollTop;
+                        syncScroll = false;
+                    }
+                });
+
                 document.getElementById('aiDiffChangePath').onclick = function(e) {
                     e.stopPropagation();
                     DirPicker.show(wd, function(selectedDir) {

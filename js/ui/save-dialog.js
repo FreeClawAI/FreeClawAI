@@ -1,10 +1,12 @@
 const SaveDialog = {
-    show: async function() {
-        await FileService.refreshAndRender();
-
-        var aiFiles = FileService.getUnsavedAiFiles();
-        var userFiles = FileService.getUserFiles();
-        var allFiles = aiFiles.concat(userFiles);
+    show: async function(preloadedFiles) {
+        var allFiles = preloadedFiles;
+        if (!allFiles) {
+            await FileService.refreshAndRender();
+            var aiFiles = FileService.getUnsavedAiFiles();
+            var userFiles = FileService.getUserFiles();
+            allFiles = aiFiles.concat(userFiles);
+        }
 
         if (!allFiles.length) {
             Toast.show(I18n.t('No files to save'), 'error');
@@ -71,7 +73,7 @@ const SaveDialog = {
             '<span style="flex:1">' + I18n.t('File') + '</span>' +
             '<span style="width:70px;text-align:right">' + I18n.t('Size') + '</span>' +
             '<span style="flex:1;padding-left:8px">' + I18n.t('Save to') + '</span>' +
-            '<span style="width:40px"></span>' +
+            '<span style="width:120px"></span>' +
             '</div>';
 
         html += '<div style="max-height:350px;overflow:auto" id="aiSaveFileList">';
@@ -83,7 +85,10 @@ const SaveDialog = {
                 '<span class="ai-save-file-col" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + Utils.esc(fileDisplay) + '</span>' +
                 '<span style="width:70px;text-align:right;font-size:11px;color:#999">' + formatSizeForList(item.size) + '</span>' +
                 '<span class="ai-save-path" style="flex:1;padding-left:8px;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#333">' + Utils.esc(saveToDisplay) + '</span>' +
-                '<span style="width:40px;text-align:center"><button class="ai-save-browse-btn" data-index="' + index + '" style="font-size:11px;padding:2px 6px;border:1px solid #ccc;border-radius:3px;background:white;cursor:pointer">📁</button></span>' +
+                '<span style="width:120px;text-align:center">' +
+                    '<button class="ai-save-diff-btn" data-index="' + index + '" style="font-size:11px;padding:2px 8px;border:1px solid #ccc;border-radius:3px;background:white;cursor:pointer;margin-right:4px">' + I18n.t('View Diff') + '</button>' +
+                    '<button class="ai-save-browse-btn" data-index="' + index + '" style="font-size:11px;padding:2px 6px;border:1px solid #ccc;border-radius:3px;background:white;cursor:pointer">📁</button>' +
+                '</span>' +
                 '</div>';
         });
         html += '</div>';
@@ -124,6 +129,22 @@ const SaveDialog = {
                         checks.forEach(function(c) { if (!c.checked) allChecked = false; });
                         selectAll.checked = allChecked;
                         updateCount();
+                    };
+                });
+
+                document.querySelectorAll('.ai-save-diff-btn').forEach(function(btn) {
+                    btn.onclick = function(e) {
+                        e.stopPropagation();
+                        var index = parseInt(btn.dataset.index);
+                        var item = fileItems[index];
+                        var origFile = FileService.getFileByName(item._origName, 'original');
+                        if (origFile) {
+                            FileTree._loadContent(origFile, origFile.workDir || item.workDir).then(function() {
+                                if (origFile.content) {
+                                    DiffDialog._render(item._origName, origFile.content, item.file.content, item.file);
+                                }
+                            });
+                        }
                     };
                 });
 
@@ -205,7 +226,6 @@ const SaveDialog = {
         }
         if (saved > 0) Toast.show(I18n.t('Saved {0} files', saved));
         await FileService.refreshAndRender();
-        Preview.show(null);
 
         if (pathChanges.length > 0) {
             var msg = I18n.t('Path changed') + ':\n';

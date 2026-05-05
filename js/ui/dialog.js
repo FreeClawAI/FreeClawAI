@@ -7,11 +7,11 @@ var DialogStack = {
     _currentId: null,
 
     init: function() {
-        if (this._container) return;
         this._overlay = document.getElementById('aiDialogOverlay');
         this._container = document.getElementById('aiDialog');
-        if (this._overlay && this._container) return;
-        this._createContainers();
+        if (!this._overlay || !this._container) {
+            this._createContainers();
+        }
     },
 
     _createContainers: function() {
@@ -30,7 +30,9 @@ var DialogStack = {
 
     _buildHTML: function(opts) {
         var html = '';
-        if (opts.title) html += '<div class="ai-dialog-header"><h3>' + opts.title + '</h3></div>';
+        if (opts.title !== null && opts.title !== undefined) {
+            html += '<div class="ai-dialog-header"><h3>' + (opts.title || '') + '</h3></div>';
+        }
         html += '<div class="ai-dialog-body">' + (opts.body || '') + '</div>';
         if (opts.buttons && opts.buttons.length > 0) {
             html += '<div class="ai-dialog-footer">';

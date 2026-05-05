@@ -89,7 +89,7 @@ const FileTree = {
     },
 
     _openRaw: function(fileDir, fileName) {
-        var absolutePath = fileDir.replace(/\\/g, '/').replace(/\/$/, '') + '/' + getShortName(fileName);
+        var absolutePath = fileDir.replace(/\\/g, '/').replace(/\/$/, '') + '/' + fileName;
         var rawUrl = Config.serverUrl + '/api/files/raw?path=' + encodeURIComponent(absolutePath);
         window.open(rawUrl, '_blank');
     },
@@ -180,7 +180,7 @@ const FileTree = {
                         if (origFile) {
                             await self._loadContent(origFile, origFile.workDir || fileDir);
                             if (origFile.content) {
-                                DiffDialog._render(fileName, origFile.content, file.content);
+                                DiffDialog._render(fileName, origFile.content, file.content, file);
                             } else {
                                 Preview.show(file);
                             }
