@@ -105,7 +105,12 @@ var I18N_ZH = {
     'Opening in browser...': '正在浏览器中打开...',
     'The following files have been modified externally:': '以下文件已被外部修改:',
     'Do you want to overwrite?': '是否覆盖？',
-    'Path changed': '路径已变更'
+    'Path changed': '路径已变更',
+    'AI is still typing, please wait...': 'AI正在输出中，请稍后...',
+    'Insert this line?': '是否插入此行？',
+    'Sync': '同步',
+    'Preview': '预览',
+    'Content exceeds limit ({0}/100000)': '内容超出限制 ({0}/100000)'
 };
 
 var I18n = {

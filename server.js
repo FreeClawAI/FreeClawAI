@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const crypto = require('crypto');
+const child_process = require('child_process');
 
 const PORT = 8080;
 const documentsDir = path.join(os.homedir(), 'Documents');
@@ -188,10 +189,26 @@ function findFileInfo(rootDir, targetName) {
     }
 }
 
+function moveToTrash(fp) {
+    if (!fs.existsSync(fp)) return;
+    if (process.platform === 'win32') {
+        var vbs = path.join(os.tmpdir(), '.freeclaw_trash_' + Date.now() + '.vbs');
+        var script = 'set s=CreateObject("Shell.Application")\ns.Namespace(10).MoveHere "' + fp.replace(/\\/g, '\\\\') + '"';
+        fs.writeFileSync(vbs, script);
+        try {
+            child_process.execSync('cscript //nologo "' + vbs + '"', { windowsHide: true });
+        } finally {
+            try { if (fs.existsSync(vbs)) fs.unlinkSync(vbs); } catch (e) {}
+        }
+    } else {
+        fs.unlinkSync(fp);
+    }
+}
+
 const server = http.createServer(function(req, res) {
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, DELETE');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Save-Dir, X-Save-Filename');
     if (req.method === 'OPTIONS') { res.writeHead(200); res.end(); return; }
 
     var body = '';
@@ -199,7 +216,9 @@ const server = http.createServer(function(req, res) {
     req.on('end', function() {
         try {
             var data = {};
-            if (body) data = JSON.parse(body);
+            if (body && req.headers['content-type'] !== 'text/plain') {
+                try { data = JSON.parse(body); } catch (e) {}
+            }
 
             if (req.url === '/api/ping' && req.method === 'GET') {
                 res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -331,10 +350,26 @@ const server = http.createServer(function(req, res) {
                 var result = writeFile(data.dir, data.filename, data.content, { md5: data.md5, force: data.force });
                 if (result.conflict) { res.writeHead(409, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'File modified', currentMd5: result.currentMd5 })); }
                 else { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(result)); }
+            } else if (req.url === '/api/files/write-raw' && req.method === 'POST') {
+                var dir = req.headers['x-save-dir'] || '';
+                var filename = req.headers['x-save-filename'] || '';
+                var result = writeFile(dir, filename, body, {});
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify(result));
             } else if (req.url === '/api/files/mkdir' && req.method === 'POST') {
                 var result = makeDir(data.dir, data.name);
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify(result));
+            } else if (req.url === '/api/files/delete' && req.method === 'POST') {
+                var fp = resolvePath(data.dir, data.filename);
+                if (!fs.existsSync(fp)) {
+                    res.writeHead(404, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ error: 'File not found' }));
+                    return;
+                }
+                moveToTrash(fp);
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: true }));
             } else {
                 res.writeHead(404); res.end('Not found');
             }

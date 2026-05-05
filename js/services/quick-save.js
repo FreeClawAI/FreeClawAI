@@ -15,6 +15,7 @@ const QuickSave = {
             if (self._busy) return;
             self._busy = true;
             try {
+                DialogStack.closeAll();
                 await FileService.refresh();
                 var aiFiles = FileService.getUnsavedAiFiles();
                 var userFiles = FileService.getUserFiles();

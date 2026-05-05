@@ -22,6 +22,13 @@ const Sites = {
         sender: {
             inputSelectors: ['textarea[placeholder*="发送"]', '#chat-input', '[role="textbox"]'],
             triggerInput: true
+        },
+        isTyping: function() {
+            var sendBtn = document.querySelector('[class*="send"] button') ||
+                           document.querySelector('button[aria-label*="发送"]') ||
+                           document.querySelector('[class*="stop"]');
+            if (!sendBtn) return false;
+            return sendBtn.offsetParent !== null;
         }
     },
     'chat.openai.com': {
@@ -37,6 +44,10 @@ const Sites = {
         sender: {
             inputSelectors: ['#prompt-textarea', 'textarea'],
             triggerInput: false
+        },
+        isTyping: function() {
+            var stopBtn = document.querySelector('[data-testid="stop-button"]');
+            return stopBtn && stopBtn.offsetParent !== null;
         }
     },
     'chatgpt.com': {
@@ -52,6 +63,10 @@ const Sites = {
         sender: {
             inputSelectors: ['#prompt-textarea', 'textarea'],
             triggerInput: false
+        },
+        isTyping: function() {
+            var stopBtn = document.querySelector('[data-testid="stop-button"]');
+            return stopBtn && stopBtn.offsetParent !== null;
         }
     },
     'claude.ai': {
@@ -67,7 +82,8 @@ const Sites = {
         sender: {
             inputSelectors: ['[contenteditable="true"][role="textbox"]', '[contenteditable="true"]'],
             triggerInput: true
-        }
+        },
+        isTyping: function() { return false; }
     },
     'gemini.google.com': {
         name: 'Gemini',
@@ -82,6 +98,7 @@ const Sites = {
         sender: {
             inputSelectors: ['textarea[aria-label]', 'textarea'],
             triggerInput: true
-        }
+        },
+        isTyping: function() { return false; }
     }
 };

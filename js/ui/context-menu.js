@@ -15,13 +15,14 @@ const ContextMenu = {
         if (type === 'original') {
             items.push({ text: I18n.t('Copy'), action: function() { ContextMenu._copyFile(filename); } });
             items.push({ text: I18n.t('Download'), action: function() { ContextMenu._download(filename); } });
+            items.push({ text: I18n.t('Delete'), action: function() { ContextMenu._delete(filename, type); } });
         }
         if (type === 'ai' || type === 'user') {
             items.push({ text: I18n.t('Save'), action: function() { SaveDialog.show(); } });
             items.push({ text: I18n.t('Format Code'), action: function() { ContextMenu._formatFile(filename); } });
             items.push({ text: I18n.t('Rename'), action: function() { ContextMenu._rename(filename); } });
+            items.push({ text: I18n.t('Delete'), action: function() { ContextMenu._delete(filename, type); } });
         }
-        items.push({ text: I18n.t('Delete'), action: function() { ContextMenu._delete(filename, type); } });
 
         items.forEach(function(item) {
             var div = document.createElement('div');
@@ -100,33 +101,26 @@ const ContextMenu = {
     },
 
     _delete: async function(filename, type) {
-        if (type === 'original') {
-            if (!confirm(I18n.t('Delete {0}? Cannot undo!', filename))) return;
-            try {
-                var dirs = FileService.getAllDirs();
-                var foundDir = null;
-                for (var i = 0; i < dirs.length; i++) {
-                    var f = FileService.findFile(filename, dirs[i]);
-                    if (f && f.isOriginal) { foundDir = dirs[i]; break; }
-                }
-                if (foundDir) {
-                    await fetch(Config.serverUrl + '/api/files/delete', {
-                        method: 'POST', headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ dir: foundDir, filename: filename })
-                    });
-                }
-                Toast.show(I18n.t('Deleted: {0}', filename));
-            } catch (e) { Toast.show(I18n.t('Failed: {0}', filename), 'error'); }
-        } else {
+        if (!confirm(I18n.t('Delete {0}? Cannot undo!', filename))) return;
+        try {
+            var dirs = FileService.getAllDirs();
+            var foundDir = null;
+            for (var i = 0; i < dirs.length; i++) {
+                var f = FileService.findFile(filename, dirs[i]);
+                if (f && f.isOriginal) { foundDir = dirs[i]; break; }
+            }
+            if (foundDir) {
+                await Api.deleteFile(foundDir, filename);
+            }
             if (type === 'ai') FileTree.removeAiFile(filename);
             if (type === 'user') {
                 FileService.removeUserFile(filename);
-                FileTree.render();
                 await DB.deleteFile(Config.mainDir + '/' + filename);
             }
             Toast.show(I18n.t('Deleted: {0}', filename));
+        } catch (e) {
+            Toast.show(I18n.t('Failed: {0}', filename), 'error');
         }
-        await FileService.refresh();
-        FileTree.render();
+        await FileService.refreshAndRender();
     }
 };

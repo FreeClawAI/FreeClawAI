@@ -49,9 +49,11 @@ const FileTree = {
                     }
                 } else {
                     var ft = child.fileType || 'original';
-                    var isModified = (ft === 'ai' || ft === 'user');
-                    var icon = isModified ? '✏️' : '';
-                    var cls = 'ai-tree-file' + (isModified ? ' ai-ai-file' : '');
+                    var icon = '';
+                    if (ft === 'ai') icon = '🤖';
+                    else if (ft === 'user') icon = '✏️';
+                    var cls = 'ai-tree-file';
+                    if (ft === 'ai') cls += ' ai-ai-file';
                     var sizeStr = child.size ? ' <span style="color:#999;font-size:11px">(' + self._formatSize(child.size) + ')</span>' : '';
                     html += '<div class="' + cls + '" data-name="' + Utils.escAttr(child.name) + '" data-dir="' + Utils.escAttr(child.workDir || dir) +
                         '" data-filetype="' + Utils.escAttr(ft) + '" data-fullpath="' + Utils.escAttr(child.fullPath || '') +
@@ -119,9 +121,12 @@ const FileTree = {
                                     '<span class="ai-tree-arrow">▶</span><span class="ai-tree-icon">📁</span>' + Utils.esc(getShortName(child.name)) +
                                     '</div><div class="ai-tree-children" style="display:none"></div>';
                             } else {
-                                var ft = child.fileType || 'original', isModified = (ft === 'ai' || ft === 'user'), icon = isModified ? '✏️' : '';
+                                var ft = child.fileType || 'original';
+                                var icon = '';
+                                if (ft === 'ai') icon = '🤖';
+                                else if (ft === 'user') icon = '✏️';
                                 var sizeStr = child.size ? ' <span style="color:#999;font-size:11px">(' + self._formatSize(child.size) + ')</span>' : '';
-                                html += '<div class="ai-tree-file' + (isModified ? ' ai-ai-file' : '') + '" data-name="' + Utils.escAttr(child.name) +
+                                html += '<div class="ai-tree-file' + (ft === 'ai' ? ' ai-ai-file' : '') + '" data-name="' + Utils.escAttr(child.name) +
                                     '" data-dir="' + Utils.escAttr(child.workDir || dir) + '" data-filetype="' + Utils.escAttr(ft) +
                                     '" data-fullpath="' + Utils.escAttr(child.fullPath || '') + '" data-size="' + (child.size || 0) +
                                     '" style="padding-left:' + (parentIndent + 16) + 'px">' +
@@ -164,29 +169,17 @@ const FileTree = {
                 }
 
                 var file = FileService.getFileByName(fileName, fileType);
-
-                if (!file) {
-                    return;
-                }
+                if (!file) return;
 
                 if (fileType === 'original') {
                     await self._loadContent(file, file.workDir || fileDir);
+                    Editor.startEdit(file);
                     return;
                 }
 
                 if (fileType === 'ai') {
                     if (file.content) {
-                        var origFile = FileService.getFileByName(fileName, 'original');
-                        if (origFile) {
-                            await self._loadContent(origFile, origFile.workDir || fileDir);
-                            if (origFile.content) {
-                                DiffDialog._render(fileName, origFile.content, file.content, file);
-                            } else {
-                                Preview.show(file);
-                            }
-                        } else {
-                            Preview.show(file);
-                        }
+                        DiffDialog.show(fileName, file);
                     }
                     return;
                 }

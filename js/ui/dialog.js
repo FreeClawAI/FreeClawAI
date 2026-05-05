@@ -31,7 +31,7 @@ var DialogStack = {
     _buildHTML: function(opts) {
         var html = '';
         if (opts.title !== null && opts.title !== undefined) {
-            html += '<div class="ai-dialog-header"><h3>' + (opts.title || '') + '</h3></div>';
+            html += '<div class="ai-dialog-header"><h3>' + (opts.title || '') + '</h3><button class="ai-dialog-close">✕</button></div>';
         }
         html += '<div class="ai-dialog-body">' + (opts.body || '') + '</div>';
         if (opts.buttons && opts.buttons.length > 0) {
@@ -57,6 +57,31 @@ var DialogStack = {
         });
     },
 
+    _bindClose: function(div) {
+        var self = this;
+        var closeBtn = div.querySelector('.ai-dialog-close');
+        if (closeBtn) {
+            closeBtn.onclick = function() { self.close(); };
+        }
+    },
+
+    confirm: function(msg, onOk, onCancel) {
+        this.show('confirm', {
+            title: null,
+            body: '<p style="text-align:center;padding:20px 0;font-size:14px">' + Utils.esc(msg) + '</p>',
+            buttons: [
+                { text: I18n.t('Confirm'), id: 'aiConfirmOk', primary: true, onClick: function() {
+                    DialogStack.close();
+                    if (onOk) onOk();
+                }},
+                { text: I18n.t('Cancel'), id: 'aiConfirmCancel', onClick: function() {
+                    DialogStack.close();
+                    if (onCancel) onCancel();
+                }}
+            ]
+        });
+    },
+
     refresh: function(id, opts) {
         this.init();
         if (!this._container || !this._overlay) return;
@@ -69,11 +94,15 @@ var DialogStack = {
             this._layers[id] = div;
         }
         div.innerHTML = this._buildHTML(opts);
-        div.style.display = 'block';
-        this._container.style.display = 'block';
+        div.style.display = 'flex';
+        div.style.flexDirection = 'column';
+        div.style.flex = '1';
+        div.style.overflow = 'hidden';
+        this._container.style.display = 'flex';
         this._overlay.style.display = 'block';
         this._currentId = id;
         this._bindButtons(opts);
+        this._bindClose(div);
         if (opts.onRender) opts.onRender();
     },
 
@@ -93,11 +122,15 @@ var DialogStack = {
             this._layers[id] = div;
         }
         div.innerHTML = this._buildHTML(opts);
-        div.style.display = 'block';
-        this._container.style.display = 'block';
+        div.style.display = 'flex';
+        div.style.flexDirection = 'column';
+        div.style.flex = '1';
+        div.style.overflow = 'hidden';
+        this._container.style.display = 'flex';
         this._overlay.style.display = 'block';
         this._currentId = id;
         this._bindButtons(opts);
+        this._bindClose(div);
         if (opts.onRender) opts.onRender();
     },
 
@@ -108,7 +141,10 @@ var DialogStack = {
         if (this._stack.length > 0) {
             var prevId = this._stack.pop();
             if (this._layers[prevId]) {
-                this._layers[prevId].style.display = 'block';
+                this._layers[prevId].style.display = 'flex';
+                this._layers[prevId].style.flexDirection = 'column';
+                this._layers[prevId].style.flex = '1';
+                this._layers[prevId].style.overflow = 'hidden';
                 this._currentId = prevId;
                 return;
             }
@@ -121,10 +157,20 @@ var DialogStack = {
     closeAll: function() {
         this._stack = [];
         for (var key in this._layers) {
-            if (this._layers[key]) this._layers[key].style.display = 'none';
+            if (this._layers[key]) {
+                var el = this._layers[key];
+                if (el.parentNode) el.parentNode.removeChild(el);
+            }
         }
-        if (this._overlay) this._overlay.style.display = 'none';
-        if (this._container) this._container.style.display = 'none';
+        this._layers = {};
         this._currentId = null;
+        if (this._container && this._container.parentNode) {
+            this._container.parentNode.removeChild(this._container);
+        }
+        if (this._overlay && this._overlay.parentNode) {
+            this._overlay.parentNode.removeChild(this._overlay);
+        }
+        this._container = null;
+        this._overlay = null;
     }
 };

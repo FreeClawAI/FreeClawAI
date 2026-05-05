@@ -57,6 +57,7 @@ const Panel = {
             '<div id="aiMenuDropdown" class="ai-menu-dropdown" style="display:none">' +
                 '<div class="ai-menu-item" data-action="newFile">📄 ' + I18n.t('New file') + '</div>' +
                 '<div class="ai-menu-item" data-action="newFolder">📁 ' + I18n.t('New folder') + '</div>' +
+                '<div class="ai-menu-item" data-action="delete">🗑 ' + I18n.t('Delete') + '</div>' +
             '</div>' +
             '<div id="aiDialogOverlay" class="ai-dialog-overlay" style="display:none"></div>' +
             '<div id="aiDialog" class="ai-dialog" style="display:none"></div>';
@@ -69,6 +70,7 @@ const Panel = {
         this.overlay.classList.add('show');
         this.btn.classList.add('hidden');
         QuickSave.hide();
+        SyncBtn.hide();
     },
 
     close: function() {
@@ -80,6 +82,7 @@ const Panel = {
         this.overlay.classList.remove('show');
         this.btn.classList.remove('hidden');
         QuickSave.show();
+        SyncBtn.show();
         DialogStack.closeAll();
     }
 };

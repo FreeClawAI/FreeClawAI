@@ -80,7 +80,7 @@ const SaveDialog = {
         fileItems.forEach(function(item, index) {
             var fileDisplay = formatDisplayPath(item.workDir, item._origName);
             var saveToDisplay = formatDisplayPath(item.workDir, item.name);
-            html += '<div class="ai-save-row" data-index="' + index + '" style="display:flex;align-items:center;padding:6px 0;border-bottom:1px solid #f0f0f0">' +
+            html += '<div class="ai-save-row" data-index="' + index + '" style="display:flex;align-items:center;padding:6px 0;border-bottom:1px solid #f0f0f0" title="' + Utils.escAttr(item._origName) + '&#10;' + Utils.escAttr(item.savePath) + '">' +
                 '<span style="width:28px"><input type="checkbox" class="ai-save-check" data-index="' + index + '" checked></span>' +
                 '<span class="ai-save-file-col" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + Utils.esc(fileDisplay) + '</span>' +
                 '<span style="width:70px;text-align:right;font-size:11px;color:#999">' + formatSizeForList(item.size) + '</span>' +
@@ -108,6 +108,14 @@ const SaveDialog = {
             title: I18n.t('Save Confirmation'),
             body: html,
             onRender: function() {
+                var container = document.getElementById('aiDialog');
+                if (container) {
+                    container.style.width = '850px';
+                    container.style.maxWidth = '95%';
+                    container.style.minWidth = '850px';
+                    container.style.maxHeight = '';
+                }
+
                 var selectAll = document.getElementById('aiSaveSelectAll');
                 var countSpan = document.getElementById('aiSaveSelectedCount');
 
@@ -137,14 +145,7 @@ const SaveDialog = {
                         e.stopPropagation();
                         var index = parseInt(btn.dataset.index);
                         var item = fileItems[index];
-                        var origFile = FileService.getFileByName(item._origName, 'original');
-                        if (origFile) {
-                            FileTree._loadContent(origFile, origFile.workDir || item.workDir).then(function() {
-                                if (origFile.content) {
-                                    DiffDialog._render(item._origName, origFile.content, item.file.content, item.file);
-                                }
-                            });
-                        }
+                        DiffDialog.show(item._origName, item.file);
                     };
                 });
 
@@ -173,6 +174,7 @@ const SaveDialog = {
                                 if (pathEl) pathEl.textContent = newDisplay;
                                 var fileCol = row.querySelector('.ai-save-file-col');
                                 if (fileCol) fileCol.innerHTML = Utils.esc(newDisplay);
+                                row.title = Utils.esc(relativeName) + '\n' + Utils.esc(fullSavePath);
                             }
                         });
                     };
@@ -201,7 +203,6 @@ const SaveDialog = {
                         return;
                     }
 
-                    DialogStack.close();
                     await SaveDialog._doSave(toSave);
                 };
             }
@@ -224,7 +225,10 @@ const SaveDialog = {
                 Toast.show(I18n.t('Failed: {0}', f.name), 'error');
             }
         }
-        if (saved > 0) Toast.show(I18n.t('Saved {0} files', saved));
+        if (saved > 0) {
+            Toast.show(I18n.t('Saved {0} files', saved));
+            DialogStack.close();
+        }
         await FileService.refreshAndRender();
 
         if (pathChanges.length > 0) {
@@ -248,7 +252,7 @@ const SaveDialog = {
         var saveDir = savePath.substring(0, lastSlash);
         var filename = savePath.substring(lastSlash + 1);
 
-        await Api.writeFile(saveDir, filename, file.content);
+        await Api.writeFileRaw(saveDir, filename, file.content);
         Config.lastSaveDir = saveDir;
     },
 

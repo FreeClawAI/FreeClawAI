@@ -22,9 +22,10 @@ const Extractor = {
 
                 const name = sel.getFilename(block) || '';
                 if (!name) return;
-
-                if (name.indexOf('.') === -1) return;
                 if (name.charAt(0) === '/' || name.charAt(0) === '.' || name.indexOf('..') !== -1) return;
+                if (name.indexOf('.') === -1) return;
+                var ext = name.split('.').pop();
+                if (ext.length > 6) return;
 
                 if (seen.indexOf(name) === -1) {
                     seen.push(name);

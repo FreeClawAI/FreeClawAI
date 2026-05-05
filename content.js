@@ -6,6 +6,7 @@ var FreeClawFirstRun = true;
     Formatter.load();
     Panel.init();
     QuickSave.init();
+    SyncBtn.init();
 
     DB.open().then(function() {
         return Config.load();
@@ -20,13 +21,18 @@ var FreeClawFirstRun = true;
 
     function _bindEvents() {
         if (_eventsBound) return;
-        if (!document.getElementById('aiRefreshBtn')) return;
+        if (typeof SettingsDialog === 'undefined') {
+            setTimeout(function() { _bindEvents(); }, 200);
+            return;
+        }
+        var el = document.getElementById('aiConfigBtn');
+        if (!el) return;
         _eventsBound = true;
 
-        document.getElementById('aiConfigBtn').onclick = function() { SettingsDialog.show(); };
+        el.onclick = function() { SettingsDialog.show(); };
         document.getElementById('aiRefreshBtn').onclick = function() { FileService.refreshAndRender(); };
-        document.getElementById('aiSaveBtn2').onclick = function() { SaveDialog.show(); };
         document.getElementById('aiSendBtn').onclick = function() { Sender.send(); };
+        document.getElementById('aiSaveBtn2').onclick = function() { SaveDialog.show(); };
         document.getElementById('aiClosePanelBtn').onclick = function() { Panel.close(); };
 
         var menuBtn = document.getElementById('aiMenuBtn');
@@ -64,6 +70,21 @@ var FreeClawFirstRun = true;
                         Toast.show(I18n.t('Failed: {0}', name), 'error');
                     }
                 }
+            } else if (action === 'delete') {
+                var file = Editor._currentFile;
+                if (!file || !file.name) {
+                    Toast.show(I18n.t('No files selected'), 'error');
+                    return;
+                }
+                if (!confirm(I18n.t('Delete {0}? Cannot undo!', file.name))) return;
+                try {
+                    var dir = file.workDir || Config.mainDir;
+                    await Api.deleteFile(dir, file.name);
+                    Toast.show(I18n.t('Deleted: {0}', file.name));
+                    await FileService.refreshAndRender();
+                } catch (e) {
+                    Toast.show(I18n.t('Failed: {0}', file.name), 'error');
+                }
             }
         });
 
@@ -78,12 +99,29 @@ var FreeClawFirstRun = true;
         });
 
         document.getElementById('aiPreviewCode').addEventListener('input', function() {
-            Preview.syncLineNumbers(); Editor.markDirty();
+            Preview.syncLineNumbers();
+            var file = Editor._currentFile;
+            if (file && file.fileType !== 'user') {
+                file.fileType = 'user';
+                file.isUser = true;
+                FileTree.render();
+            }
+            Editor.markDirty();
         });
         document.getElementById('aiSearchFiles').addEventListener('input',
             Utils.debounce(function() { FileTree.render(); }, 300)
         );
         Preview.scrollSync();
+    }
+
+    function _unbindEvents() {
+        if (!_eventsBound) return;
+        _eventsBound = false;
+        var ids = ['aiConfigBtn', 'aiRefreshBtn', 'aiSendBtn', 'aiSaveBtn2', 'aiClosePanelBtn'];
+        ids.forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) el.onclick = null;
+        });
     }
 
     var heartbeatTimer = null;
@@ -133,9 +171,7 @@ var FreeClawFirstRun = true;
         updateStatusLight(connected);
 
         if (!connected) {
-            if (FreeClawFirstRun) {
-                FreeClawFirstRun = false;
-            }
+            FreeClawFirstRun = false;
             Toast.show(I18n.t('Cannot connect. Start node server.js'), 'error');
         } else {
             FreeClawFirstRun = false;
@@ -153,6 +189,7 @@ var FreeClawFirstRun = true;
         }
         clearInterval(heartbeatTimer);
         panelWasOpen = false;
+        _unbindEvents();
         _origClose.call(Panel);
     };
 })();

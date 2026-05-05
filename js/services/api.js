@@ -42,6 +42,21 @@ const Api = {
         return await this._post('/api/files/write', { dir: dir, filename: filename, content: content });
     },
 
+    writeFileRaw: async function(dir, filename, content) {
+        var r = await fetch(this._baseUrl() + '/api/files/write-raw', {
+            method: 'POST',
+            headers: {
+                'X-Save-Dir': dir || '',
+                'X-Save-Filename': filename || '',
+                'Content-Type': 'text/plain'
+            },
+            body: content
+        });
+        var j = await r.json();
+        if (!r.ok) throw new Error(j.error || 'Write failed');
+        return j;
+    },
+
     findFiles: async function(dirs, aiNames) {
         var j = await this._post('/api/files/find', { dirs: dirs, aiFiles: aiNames });
         return j.matches || {};
@@ -49,6 +64,10 @@ const Api = {
 
     mkdir: async function(dir, name) {
         return await this._post('/api/files/mkdir', { dir: dir, name: name });
+    },
+
+    deleteFile: async function(dir, filename) {
+        return await this._post('/api/files/delete', { dir: dir, filename: filename });
     },
 
     getPaths: async function() {
