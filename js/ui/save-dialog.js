@@ -207,11 +207,10 @@ const SaveDialog = {
         Preview.show(null);
 
         if (pathChanges.length > 0) {
-            var msg = '以下文件路径已变更:\n';
+            var msg = I18n.t('Path changed') + ':\n';
             pathChanges.forEach(function(c) {
                 msg += c.from + ' → ' + c.to + '\n';
             });
-            msg += '\n请记住这些变更。';
             Panel.close();
             var editor = Sender._findEditor();
             if (editor) {

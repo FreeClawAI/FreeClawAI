@@ -82,7 +82,6 @@ var I18N_ZH = {
     'Folder name:': '文件夹名:',
     'File name:': '文件名:',
     'Template name:': '模板名称:',
-    'Enter new directory path': '输入新目录路径',
     'Desktop': '桌面',
     'Documents': '文档',
     'Downloads': '下载',
@@ -105,7 +104,8 @@ var I18N_ZH = {
     '[File too large to preview]': '[文件过大，无法预览]',
     'Opening in browser...': '正在浏览器中打开...',
     'The following files have been modified externally:': '以下文件已被外部修改:',
-    'Do you want to overwrite?': '是否覆盖？'
+    'Do you want to overwrite?': '是否覆盖？',
+    'Path changed': '路径已变更'
 };
 
 var I18n = {
