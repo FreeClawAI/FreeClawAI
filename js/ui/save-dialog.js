@@ -1,6 +1,8 @@
 const SaveDialog = {
-    show: function() {
-        var aiFiles = FileService.getAiFiles();
+    show: async function() {
+        await FileService.refreshAndRender();
+
+        var aiFiles = FileService.getUnsavedAiFiles();
         var userFiles = FileService.getUserFiles();
         var allFiles = aiFiles.concat(userFiles);
 
@@ -24,29 +26,41 @@ const SaveDialog = {
             return wdName + ':' + name;
         }
 
-        function isPathInWorkDirs(path) {
-            var normalized = path.replace(/\\/g, '/');
+        function findWorkDir(fullPath) {
+            var normalized = fullPath.replace(/\\/g, '/');
             for (var i = 0; i < workDirs.length; i++) {
                 var d = workDirs[i].replace(/\\/g, '/');
                 if (normalized.indexOf(d) === 0) {
-                    return true;
+                    return workDirs[i];
                 }
             }
-            return false;
+            return null;
+        }
+
+        function extractRelativeName(fullPath, workDir) {
+            var normalized = fullPath.replace(/\\/g, '/');
+            var wd = workDir.replace(/\\/g, '/').replace(/\/$/, '');
+            var name = normalized.substring(wd.length);
+            if (name.charAt(0) === '/') name = name.substring(1);
+            return name;
         }
 
         var fileItems = allFiles.map(function(f) {
             var wd = f.workDir || Config.mainDir;
-            if (!isPathInWorkDirs(wd)) {
+            if (!findWorkDir(wd)) {
                 wd = Config.mainDir;
             }
+            var savePath = wd.replace(/\\/g, '/').replace(/\/$/, '') + '/' + f.name;
             var displayPath = formatDisplayPath(wd, f.name);
             return {
                 name: f.name,
                 displayPath: displayPath,
+                content: f.content,
+                size: f.size || (f.content ? f.content.length : 0),
+                workDir: wd,
+                savePath: savePath,
                 file: f,
-                saveDir: wd,
-                size: f.size || (f.content ? f.content.length : 0)
+                _origName: f.name
             };
         });
 
@@ -62,7 +76,7 @@ const SaveDialog = {
 
         html += '<div style="max-height:350px;overflow:auto" id="aiSaveFileList">';
         fileItems.forEach(function(item, index) {
-            var saveToDisplay = formatDisplayPath(item.saveDir, item.name);
+            var saveToDisplay = formatDisplayPath(item.workDir, item._origName);
             html += '<div class="ai-save-row" data-index="' + index + '" style="display:flex;align-items:center;padding:6px 0;border-bottom:1px solid #f0f0f0">' +
                 '<span style="width:28px"><input type="checkbox" class="ai-save-check" data-index="' + index + '" checked></span>' +
                 '<span class="ai-save-file-col" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📄 ' + Utils.esc(item.displayPath) + '</span>' +
@@ -116,21 +130,27 @@ const SaveDialog = {
                     btn.onclick = function(e) {
                         e.stopPropagation();
                         var index = parseInt(btn.dataset.index);
-                        var originalWorkDir = fileItems[index].file.workDir || Config.mainDir;
-                        DirPicker.show(fileItems[index].saveDir, function(selectedDir) {
-                            var normalized = selectedDir.replace(/\\/g, '/');
-                            var origNormalized = originalWorkDir.replace(/\\/g, '/');
-                            if (normalized.indexOf(origNormalized) !== 0) {
+                        var origName = fileItems[index]._origName;
+                        DirPicker.show(fileItems[index].workDir, function(selectedDir) {
+                            var foundWorkDir = findWorkDir(selectedDir);
+                            if (!foundWorkDir) {
                                 Toast.show(I18n.t('Can only save to work directories'), 'error');
                                 return;
                             }
-                            fileItems[index].saveDir = selectedDir;
-                            fileItems[index].file._saveDir = selectedDir;
-                            var newSaveToDisplay = formatDisplayPath(selectedDir, fileItems[index].name);
+                            var pureName = Utils.getPureFileName(origName);
+                            var fullSavePath = selectedDir.replace(/\\/g, '/').replace(/\/$/, '') + '/' + pureName;
+                            var relativeName = extractRelativeName(fullSavePath, foundWorkDir);
+                            fileItems[index].workDir = foundWorkDir;
+                            fileItems[index].savePath = fullSavePath;
+                            fileItems[index].name = relativeName;
+                            var newDisplay = formatDisplayPath(foundWorkDir, relativeName);
+                            fileItems[index].displayPath = newDisplay;
                             var row = document.querySelector('.ai-save-row[data-index="' + index + '"]');
                             if (row) {
                                 var pathEl = row.querySelector('.ai-save-path');
-                                if (pathEl) pathEl.textContent = newSaveToDisplay;
+                                if (pathEl) pathEl.textContent = newDisplay;
+                                var fileCol = row.querySelector('.ai-save-file-col');
+                                if (fileCol) fileCol.innerHTML = '📄 ' + Utils.esc(newDisplay);
                             }
                         });
                     };
@@ -147,7 +167,8 @@ const SaveDialog = {
                         var index = parseInt(c.dataset.index);
                         var item = fileItems[index];
                         var f = item.file;
-                        f._saveDir = item.saveDir;
+                        f._savePath = item.savePath;
+                        f._saveDir = item.workDir;
                         toSave.push(f);
                     });
 
@@ -185,59 +206,28 @@ const SaveDialog = {
             }
         }
         if (saved > 0) Toast.show(I18n.t('Saved {0} files', saved));
-        await FileService.refresh();
-        FileTree.render();
+        await FileService.refreshAndRender();
         Preview.show(null);
     },
 
     _saveOne: async function(file) {
-        var saveDir = file._saveDir || file.workDir || Config.mainDir;
-        var filename = file.name;
+        var savePath = file._savePath || '';
+        var lastSlash = savePath.lastIndexOf('/');
+        var saveDir = savePath.substring(0, lastSlash);
+        var filename = savePath.substring(lastSlash + 1);
 
-        var body = { dir: saveDir, filename: filename, content: file.content };
-
-        var r = await fetch(Config.serverUrl + '/api/files/write', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body)
-        });
-
-        var result = await r.json();
-
-        if (!r.ok) {
-            throw new Error(result.error || 'Write failed');
-        }
-
+        await Api.writeFile(saveDir, filename, file.content);
         Config.lastSaveDir = saveDir;
     },
 
     _checkConflicts: async function(files) {
-        var searchDirs = Config.workDirs || [];
-        var aiNames = files.map(function(f) { return f.name; });
-
-        var matches = {};
-        try {
-            var fr = await fetch(Config.serverUrl + '/api/files/find', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ dirs: searchDirs, aiFiles: aiNames })
-            });
-            var fj = await fr.json();
-            matches = fj.matches || {};
-        } catch (e) {
-            return [];
-        }
-
         var conflicted = [];
         files.forEach(function(f) {
-            var info = matches[f.name];
-            if (!info || info.content === undefined) return;
-
-            if (Utils.isSameContent(f.content, info.content)) return;
-
+            var origFile = FileService.getFileByName(f.name, 'original');
+            if (!origFile || origFile.content === undefined) return;
+            if (Utils.isSameContent(f.content, origFile.content)) return;
             conflicted.push({ name: f.name });
         });
-
         return conflicted;
     }
 };

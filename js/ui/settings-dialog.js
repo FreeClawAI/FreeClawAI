@@ -8,15 +8,15 @@ const SettingsDialog = {
         try {
             var controller = new AbortController();
             var timeout = setTimeout(function() { controller.abort(); }, 3000);
-            var r = await fetch(currentUrl + '/api/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dirs: this._dirs }), signal: controller.signal });
+            var j = await Api.configDirs(this._dirs);
             clearTimeout(timeout);
-            if (r.ok) { var j = await r.json(); if (j.success && j.dirs) { this._dirs = j.dirs; Config._data.workDirs = j.dirs; await Config.save(); } }
+            if (j.success && j.dirs) { this._dirs = j.dirs; Config._data.workDirs = j.dirs; await Config.save(); }
         } catch (e) {}
         this._render(currentUrl);
         this._testConn();
     },
 
-    _render: async function(serverUrl) {
+    _render: function(serverUrl) {
         var self = this;
         var currentUrl = serverUrl || Config.serverUrl || 'http://localhost:8080';
 
@@ -63,7 +63,7 @@ const SettingsDialog = {
                     self._testConn().then(function(connected) {
                         if (!connected) { Toast.show(I18n.t('Cannot connect. Start node server.js'), 'error'); return; }
                         DirPicker.show(Config.mainDir, function(selectedPath) {
-                            self._addDirByPath(selectedPath, currentUrl).then(function() {
+                            self._addDirByPath(selectedPath).then(function() {
                                 self._render(currentUrl);
                             });
                         });
@@ -87,8 +87,8 @@ const SettingsDialog = {
                         await Config.save();
                         if (!self._dirs.length) {
                             try {
-                                var r = await fetch(currentUrl + '/api/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dirs: [] }) });
-                                if (r.ok) { var j = await r.json(); if (j.success && j.dirs) { self._dirs = j.dirs; Config._data.workDirs = j.dirs; await Config.save(); } }
+                                var j = await Api.configDirs([]);
+                                if (j.success && j.dirs) { self._dirs = j.dirs; Config._data.workDirs = j.dirs; await Config.save(); }
                             } catch (e) {}
                         }
                         self._render(currentUrl);
@@ -98,14 +98,12 @@ const SettingsDialog = {
         });
     },
 
-    _addDirByPath: async function(newDir, serverUrl) {
-        var url = serverUrl || Config.serverUrl;
+    _addDirByPath: async function(newDir) {
         if (!newDir) return;
         Toast.show(I18n.t('Validating...'));
         try {
             var allDirs = this._dirs.concat([newDir]);
-            var r = await fetch(url + '/api/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dirs: allDirs }) });
-            var j = await r.json();
+            var j = await Api.configDirs(allDirs);
             if (j.success) {
                 this._dirs = j.dirs;
                 Config._data.workDirs = j.dirs;
@@ -126,9 +124,9 @@ const SettingsDialog = {
         url = url.value.trim();
         status.textContent = I18n.t('Testing...'); status.style.color = '#666';
         try {
-            var r = await fetch(url + '/api/ping');
-            if (r.ok) { status.textContent = I18n.t('✅ Connected'); status.style.color = '#28a745'; return true; }
-            else { status.textContent = I18n.t('❌ HTTP {0}', r.status); status.style.color = '#dc3545'; return false; }
+            var connected = await Api.ping();
+            if (connected) { status.textContent = I18n.t('✅ Connected'); status.style.color = '#28a745'; return true; }
+            else { status.textContent = I18n.t('❌ Cannot connect'); status.style.color = '#dc3545'; return false; }
         } catch (e) { status.textContent = I18n.t('❌ Cannot connect'); status.style.color = '#dc3545'; return false; }
     }
 };

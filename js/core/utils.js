@@ -22,5 +22,30 @@ const Utils = {
     },
     isSameContent(a, b) {
         return this.normalizeContent(a) === this.normalizeContent(b);
+    },
+    getPureFileName(name) {
+        return (name || '').split('\\').pop().split('/').pop();
+    },
+    getDirPath(name) {
+        if (!name) return '';
+        var lastSlash = Math.max(name.lastIndexOf('/'), name.lastIndexOf('\\'));
+        return lastSlash >= 0 ? name.substring(0, lastSlash) : '';
+    },
+    pathJoin: function() {
+        var parts = [];
+        for (var i = 0; i < arguments.length; i++) {
+            if (!arguments[i]) continue;
+            var p = String(arguments[i]).replace(/\\/g, '/');
+            if (i > 0 && p.charAt(0) === '/') p = p.substring(1);
+            parts.push(p.replace(/\/$/, ''));
+        }
+        return parts.join('/');
+    },
+    splitPath: function(path) {
+        if (!path) return { dir: '', name: '' };
+        var normalized = path.replace(/\\/g, '/');
+        var lastSlash = normalized.lastIndexOf('/');
+        if (lastSlash < 0) return { dir: '', name: normalized };
+        return { dir: normalized.substring(0, lastSlash), name: normalized.substring(lastSlash + 1) };
     }
 };

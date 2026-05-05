@@ -15,9 +15,9 @@ const QuickSave = {
             if (self._busy) return;
             self._busy = true;
             try {
-                await FileService.refresh();
+                await FileService.refreshAndRender();
 
-                var aiFiles = FileService.getAiFiles();
+                var aiFiles = FileService.getUnsavedAiFiles();
                 var userFiles = FileService.getUserFiles();
                 var allFiles = aiFiles.concat(userFiles);
 

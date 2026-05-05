@@ -4,9 +4,8 @@ const PromptsBar = {
 
     async load() {
         try {
-            var r = await fetch(Config.serverUrl + '/api/prompts/list');
-            var j = await r.json();
-            if (j.success && j.data) this._prompts = j.data;
+            var result = await Api.promptsList();
+            if (result.success && result.data) this._prompts = result.data;
         } catch (e) {}
         this.render();
     },

@@ -15,8 +15,7 @@ var DirPicker = {
 
     _loadPaths: async function() {
         try {
-            var r = await fetch(Config.serverUrl + '/api/paths');
-            if (r.ok) { var j = await r.json(); this._paths = j; }
+            this._paths = await Api.getPaths();
         } catch (e) {
             this._paths = { desktop: '', documents: '', downloads: '', home: '', drives: [] };
         }
@@ -116,13 +115,7 @@ var DirPicker = {
         list.innerHTML = '<div style="text-align:center;color:#999;padding:20px">' + I18n.t('Loading...') + '</div>';
         if (dir === '__drives__') { this._loadDrives(); return; }
         try {
-            var r = await fetch(Config.serverUrl + '/api/files/list', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ dir: dir })
-            });
-            var j = await r.json();
-            var files = j.files || [];
+            var files = await Api.listFiles(dir);
             var dirs = files.filter(function(f) { return f.isDir === true; });
             var html = '';
             if (dirs.length === 0) {

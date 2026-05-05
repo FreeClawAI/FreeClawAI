@@ -24,7 +24,7 @@ var FreeClawFirstRun = true;
         _eventsBound = true;
 
         document.getElementById('aiConfigBtn').onclick = function() { SettingsDialog.show(); };
-        document.getElementById('aiRefreshBtn').onclick = function() { FileTree.refresh(); };
+        document.getElementById('aiRefreshBtn').onclick = function() { FileService.refreshAndRender(); };
         document.getElementById('aiSaveBtn2').onclick = function() { SaveDialog.show(); };
         document.getElementById('aiSendBtn').onclick = function() { Sender.send(); };
         document.getElementById('aiClosePanelBtn').onclick = function() { Panel.close(); };
@@ -56,11 +56,7 @@ var FreeClawFirstRun = true;
                 var name = prompt(I18n.t('Folder name:'));
                 if (name) {
                     try {
-                        await fetch(Config.serverUrl + '/api/files/mkdir', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ dir: Config.mainDir, name: name })
-                        });
+                        await Api.mkdir(Config.mainDir, name);
                         Toast.show(I18n.t('Folder: {0}', name));
                         await FileService.loadDir(Config.mainDir);
                         FileTree.render();
@@ -108,17 +104,13 @@ var FreeClawFirstRun = true;
     }
 
     function heartbeat() {
-        var url = Config.serverUrl;
-        if (!url) { updateStatusLight(false); return; }
-        fetch(url + '/api/ping').then(function(r) {
-            var connected = r.ok;
+        Api.ping().then(function(connected) {
             updateStatusLight(connected);
             if (wasConnected && !connected) {
                 Toast.show(I18n.t('Cannot connect. Start node server.js'), 'error');
             }
             if (!wasConnected && connected && panelWasOpen) {
-                FileTree.refresh();
-                FileTree.initEvents();
+                FileService.refreshAndRender();
                 PromptsBar.load();
                 TemplatesBar.render();
             }
@@ -137,8 +129,7 @@ var FreeClawFirstRun = true;
         heartbeatTimer = setInterval(heartbeat, 5000);
         panelWasOpen = true;
 
-        var connected = false;
-        try { var r = await fetch(Config.serverUrl + '/api/ping'); connected = r.ok; } catch (e) {}
+        var connected = await Api.ping();
         updateStatusLight(connected);
 
         if (!connected) {
@@ -148,8 +139,7 @@ var FreeClawFirstRun = true;
             Toast.show(I18n.t('Cannot connect. Start node server.js'), 'error');
         } else {
             FreeClawFirstRun = false;
-            await FileTree.refresh();
-            FileTree.initEvents();
+            await FileService.refreshAndRender();
             await PromptsBar.load();
             TemplatesBar.render();
         }
