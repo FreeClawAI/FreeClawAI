@@ -1,4 +1,4 @@
-// FreeClaw - API Test
+// FreeClaw - API Test v3
 const ApiTest = {
     run: async function() {
         Toast.show('Testing API...');
