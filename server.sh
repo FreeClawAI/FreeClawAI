@@ -3,7 +3,7 @@ cd "$(dirname "$0")"
 
 # Check if Node.js is installed
 if ! command -v node &> /dev/null; then
-    echo "[FreeClaw] Node.js is not installed."
+    echo "[FreeClawAI] Node.js is not installed."
     echo ""
     echo "Please install Node.js:"
     echo "  macOS:   brew install node"
@@ -16,7 +16,7 @@ fi
 
 # Display Node.js version
 NODE_VERSION=$(node --version)
-echo "[FreeClaw] Node.js $NODE_VERSION detected."
+echo "[FreeClawAI] Node.js $NODE_VERSION detected."
 
-echo "Starting FreeClaw Server..."
+echo "Starting FreeClawAI Server..."
 node server.js

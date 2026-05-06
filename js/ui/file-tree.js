@@ -55,11 +55,15 @@ const FileTree = {
                     var cls = 'ai-tree-file';
                     if (ft === 'ai') cls += ' ai-ai-file';
                     var sizeStr = child.size ? ' <span style="color:#999;font-size:11px">(' + self._formatSize(child.size) + ')</span>' : '';
+                    var displayName = getShortName(child.name);
+                    if (child.range) {
+                        displayName += ' [' + child.range.start + ',' + child.range.end + ']';
+                    }
                     html += '<div class="' + cls + '" data-name="' + Utils.escAttr(child.name) + '" data-dir="' + Utils.escAttr(child.workDir || dir) +
                         '" data-filetype="' + Utils.escAttr(ft) + '" data-fullpath="' + Utils.escAttr(child.fullPath || '') +
                         '" data-size="' + (child.size || 0) + '" style="padding-left:' + (indent + 16) + 'px">' +
                         (icon ? '<span class="ai-tree-icon">' + icon + '</span>' : '') +
-                        '<span class="ai-tree-name"' + (icon ? '' : ' style="padding-left:20px"') + '>' + Utils.esc(getShortName(child.name)) + '</span>' + sizeStr + '</div>';
+                        '<span class="ai-tree-name"' + (icon ? '' : ' style="padding-left:20px"') + '>' + Utils.esc(displayName) + '</span>' + sizeStr + '</div>';
                 }
             });
         }
@@ -126,12 +130,16 @@ const FileTree = {
                                 if (ft === 'ai') icon = '🤖';
                                 else if (ft === 'user') icon = '✏️';
                                 var sizeStr = child.size ? ' <span style="color:#999;font-size:11px">(' + self._formatSize(child.size) + ')</span>' : '';
+                                var displayName = getShortName(child.name);
+                                if (child.range) {
+                                    displayName += ' [' + child.range.start + ',' + child.range.end + ']';
+                                }
                                 html += '<div class="ai-tree-file' + (ft === 'ai' ? ' ai-ai-file' : '') + '" data-name="' + Utils.escAttr(child.name) +
                                     '" data-dir="' + Utils.escAttr(child.workDir || dir) + '" data-filetype="' + Utils.escAttr(ft) +
                                     '" data-fullpath="' + Utils.escAttr(child.fullPath || '') + '" data-size="' + (child.size || 0) +
                                     '" style="padding-left:' + (parentIndent + 16) + 'px">' +
                                     (icon ? '<span class="ai-tree-icon">' + icon + '</span>' : '') +
-                                    '<span class="ai-tree-name"' + (icon ? '' : ' style="padding-left:20px"') + '>' + Utils.esc(getShortName(child.name)) + '</span>' + sizeStr + '</div>';
+                                    '<span class="ai-tree-name"' + (icon ? '' : ' style="padding-left:20px"') + '>' + Utils.esc(displayName) + '</span>' + sizeStr + '</div>';
                             }
                         });
                         childrenDiv.innerHTML = html;
@@ -173,7 +181,6 @@ const FileTree = {
 
                 if (fileType === 'original') {
                     await self._loadContent(file, file.workDir || fileDir);
-                    Editor.startEdit(file);
                     return;
                 }
 

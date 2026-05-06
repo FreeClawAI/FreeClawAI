@@ -79,6 +79,11 @@ const Panel = {
         if (Editor && typeof Editor.hasChanges === 'function' && Editor.hasChanges()) {
             if (!confirm(I18n.t('Unsaved changes. Close anyway?'))) return;
         }
+        // Cancel line selection to avoid interfering with AI page
+        Preview._selectStart = null;
+        Preview._selectEnd = null;
+        Preview._clickCount = 0;
+
         this.el.classList.remove('show');
         this.overlay.classList.remove('show');
         this.btn.classList.remove('hidden');

@@ -6,6 +6,7 @@ const Sender = {
         var input = document.getElementById('aiInput');
         var inputVal = input ? input.value.trim() : '';
         await this._doSend(inputVal);
+        if (input) input.value = '';
     },
 
     sendDirect: async function(promptContent) {

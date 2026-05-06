@@ -20,7 +20,7 @@ const DiffDialog = {
     _render: function(filename, original, modified, aiFile, isNew, onSaved) {
         var origLines = original ? original.split('\n') : [];
         var modLines = modified.split('\n');
-        var diff = isNew ? Diff._newFileDiff(modLines) : Diff._compute(origLines, modLines);
+        var diff = isNew ? _newFileDiff(modLines) : _computeDiff(origLines, modLines);
         var adds = 0, dels = 0;
         diff.forEach(function(d) { if (d.added) adds++; if (d.removed) dels++; });
 
@@ -92,22 +92,22 @@ const DiffDialog = {
     }
 };
 
-var Diff = {
-    _compute: function(oldLines, newLines) {
-        if (typeof JsDiff !== 'undefined' && JsDiff.diffLines) {
-            return JsDiff.diffLines(oldLines.join('\n'), newLines.join('\n'));
-        }
-        return this._simpleDiff(oldLines, newLines);
-    },
-    _newFileDiff: function(newLines) {
-        return [{ added: true, value: newLines.join('\n') + '\n' }];
-    },
-    _simpleDiff: function(ol, nl) {
-        var r = [], i = 0, j = 0;
-        while (i < ol.length || j < nl.length) {
-            if (i < ol.length && j < nl.length && ol[i] === nl[j]) { r.push({ value: ol[i] + '\n' }); i++; j++; }
-            else { if (i < ol.length) { r.push({ removed: true, value: ol[i] + '\n' }); i++; } if (j < nl.length) { r.push({ added: true, value: nl[j] + '\n' }); j++; } }
-        }
-        return r;
+function _computeDiff(oldLines, newLines) {
+    if (typeof Diff !== 'undefined' && typeof Diff.diffLines === 'function') {
+        return Diff.diffLines(oldLines.join('\n'), newLines.join('\n'));
     }
-};
+    return _simpleDiff(oldLines, newLines);
+}
+
+function _newFileDiff(newLines) {
+    return [{ added: true, value: newLines.join('\n') + '\n' }];
+}
+
+function _simpleDiff(ol, nl) {
+    var r = []; var i = 0, j = 0;
+    while (i < ol.length || j < nl.length) {
+        if (i < ol.length && j < nl.length && ol[i] === nl[j]) { r.push({ value: ol[i] + '\n' }); i++; j++; }
+        else { if (i < ol.length) { r.push({ removed: true, value: ol[i] + '\n' }); i++; } if (j < nl.length) { r.push({ added: true, value: nl[j] + '\n' }); j++; } }
+    }
+    return r;
+}

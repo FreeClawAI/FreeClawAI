@@ -16,6 +16,12 @@ const QuickSave = {
             self._busy = true;
             try {
                 DialogStack.closeAll();
+                var connected = await Api.ping();
+                if (!connected) {
+                    Toast.show(I18n.t('Cannot connect. Start node server.js'), 'error');
+                    SettingsDialog.show();
+                    return;
+                }
                 await FileService.refresh();
                 var aiFiles = FileService.getUnsavedAiFiles();
                 var userFiles = FileService.getUserFiles();

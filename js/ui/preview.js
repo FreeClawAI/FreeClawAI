@@ -34,6 +34,7 @@ const Preview = {
             code.style.display = 'block';
         }
         if (empty) empty.style.display = 'none';
+        this._initCodeSelection();
         this._updateStatusBar();
     },
 
@@ -49,7 +50,13 @@ const Preview = {
                     self._selectStart = line;
                     self._selectEnd = line;
                 } else if (self._clickCount === 2) {
-                    self._selectEnd = line;
+                    if (line === self._selectStart) {
+                        self._selectStart = null;
+                        self._selectEnd = null;
+                        self._clickCount = 0;
+                    } else {
+                        self._selectEnd = line;
+                    }
                 } else {
                     self._clickCount = 1;
                     self._selectStart = line;
@@ -59,6 +66,32 @@ const Preview = {
                 self._highlightLines();
                 self._updateStatusBar();
             });
+        });
+    },
+
+    _initCodeSelection: function() {
+        var self = this;
+        var code = document.getElementById('aiPreviewCode');
+        if (!code || code._selBound) return;
+        code._selBound = true;
+
+        code.addEventListener('mouseup', function() {
+            var text = code.value;
+            var selStart = code.selectionStart;
+            var selEnd = code.selectionEnd;
+
+            if (selStart === selEnd) return;
+
+            var start = (text.substring(0, selStart).match(/\n/g) || []).length + 1;
+            var end = (text.substring(0, selEnd).match(/\n/g) || []).length + 1;
+
+            if (start !== end) {
+                self._selectStart = start;
+                self._selectEnd = end - 1;
+                self._clickCount = 2;
+                self._highlightLines();
+                self._updateStatusBar();
+            }
         });
     },
 

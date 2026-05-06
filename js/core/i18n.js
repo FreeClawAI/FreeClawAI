@@ -110,6 +110,13 @@ var I18N_ZH = {
     'Insert this line?': '是否插入此行？',
     'Sync': '同步',
     'Preview': '预览',
+    'Confirm Overwrite': '确认覆盖',
+    'Save': '保存',
+    'Cancel': '取消',
+    'Save to': '保存到',
+    'Original': '原始',
+    'AI': 'AI',
+    '[New]': '[新文件]',
     'Content exceeds limit ({0}/100000)': '内容超出限制 ({0}/100000)'
 };
 
