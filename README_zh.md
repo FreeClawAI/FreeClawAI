@@ -16,7 +16,7 @@
 2. 解压到任意目录
 3. Chrome 打开 `chrome://extensions/`，开启**开发者模式**
 4. **加载已解压的扩展程序** → 选择解压文件夹
-5. 打开 DeepSeek Chat，右上角出现 📁 和 💾 按钮
+5. 打开 [DeepSeek Chat](https://chat.deepseek.com/)，右上角出现 📁 和 💾 按钮
 
 > ✅ 不需要 `npm install` | ✅ 不需要 `pip install` | ✅ 不需要 Docker
 

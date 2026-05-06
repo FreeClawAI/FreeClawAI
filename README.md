@@ -16,7 +16,7 @@ Grab code from AI chats, save to your local project instantly. Zero API cost. Ze
 2. Extract to any folder
 3. Open Chrome, go to `chrome://extensions/`, enable **Developer mode**
 4. Click **Load unpacked** → select the extracted folder
-5. Open DeepSeek Chat, the 📁 and 💾 buttons appear in the top-right corner
+5. Open [DeepSeek Chat](https://chat.deepseek.com/), the 📁 and 💾 buttons appear in the top-right corner
 
 > ✅ No `npm install` | ✅ No `pip install` | ✅ No Docker
 
