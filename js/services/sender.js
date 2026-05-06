@@ -1,36 +1,33 @@
-// FreeClaw - Send selected files + prompt to AI chat input
+// FreeClaw - Send previewed file + prompt to AI chat input
 const Sender = {
     MAX_CHARS: 100000,
 
     send: async function() {
         var input = document.getElementById('aiInput');
         var inputVal = input ? input.value.trim() : '';
-        var files = FileTree.getSelectedFiles();
-        await this._doSend(inputVal, files);
+        await this._doSend(inputVal);
     },
 
     sendDirect: async function(promptContent) {
-        var files = FileTree.getSelectedFiles();
-        await this._doSend(promptContent, files);
+        await this._doSend(promptContent);
     },
 
-    _doSend: async function(userInput, files) {
+    _doSend: async function(userInput) {
         var msg = '';
-
-        if (Config.workDirs && Config.workDirs.length > 0) {
-            msg += '## 工作目录: ' + Config.mainDir + '\n\n';
-        }
 
         if (userInput) {
             msg += userInput + '\n\n';
         }
 
-        if (files.length > 0) {
-            files.forEach(function(f) {
-                var name = f.name || '';
-                var content = f.content || '';
-                msg += '## ' + name + '\n```\n' + content + '\n```\n\n';
-            });
+        var file = Preview._currentFile;
+        if (file && file.content) {
+            var name = file.name || '';
+            var sel = Preview.getSelection();
+            if (sel) {
+                msg += '## ' + name + ' [' + sel.start + ',' + sel.end + ']\n```\n' + sel.text + '\n```\n';
+            } else {
+                msg += '## ' + name + '\n```\n' + file.content + '\n```\n';
+            }
         }
 
         if (!msg.trim()) return;
@@ -47,7 +44,6 @@ const Sender = {
             editor.focus();
         }
         Panel.close();
-        FileTree.saveState();
     },
 
     _findEditor: function() {

@@ -40,9 +40,10 @@ const Panel = {
                 '<div class="ai-right">' +
                     '<div class="ai-body">' +
                         '<div id="aiEmpty">' + I18n.t('Click a file to view') + '</div>' +
-                        '<textarea id="aiLineNumbers" readonly></textarea>' +
+                        '<div id="aiLineNumbers"></div>' +
                         '<textarea id="aiPreviewCode" readonly></textarea>' +
                     '</div>' +
+                    '<div id="aiSelectionInfo" style="display:none;padding:2px 10px;background:#007bff;color:#fff;font-size:11px;flex-shrink:0"></div>' +
                     '<div id="aiPromptBar"></div>' +
                     '<div id="aiTemplateBar"></div>' +
                     '<div class="ai-bottom">' +
