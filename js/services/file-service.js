@@ -178,6 +178,17 @@ const FileService = {
         this._aiFiles.forEach(function(aiFile) {
             var info = matches[aiFile.name];
 
+            // merge range with original content
+            if (aiFile.range && info && info.content) {
+                var origLines = info.content.split('\n');
+                var aiLines = aiFile.content.split('\n');
+                var startIdx = aiFile.range.start - 1;
+                var endIdx = aiFile.range.end;
+                var merged = origLines.slice(0, startIdx).concat(aiLines).concat(origLines.slice(endIdx));
+                aiFile.content = Utils.normalizeContent(merged.join('\n'));
+                aiFile.range = null;
+            }
+
             if (info && info.content !== undefined) {
                 if (Utils.isSameContent(aiFile.content, info.content)) return;
             }
@@ -199,7 +210,7 @@ const FileService = {
             }
             if (!matchDir) {
                 var fullPath = Utils.pathJoin(matchWorkDir, aiFile.name);
-                matchDir = Utils.getDirPath(fullPath)
+                matchDir = Utils.getDirPath(fullPath);
             }
 
             aiFile.type = 'file';

@@ -18,18 +18,25 @@ const Extractor = {
                 const pre = sel.codeElement ? block.querySelector(sel.codeElement) : block;
                 if (!pre) return;
                 const code = (pre.textContent || '').trim();
-                if (!code || code.length < 20) return;
+                if (!code || code.length < 2) return;
 
-                const name = sel.getFilename(block) || '';
+                var name = sel.getFilename(block) || '';
                 if (!name) return;
                 if (name.charAt(0) === '/' || name.charAt(0) === '.' || name.indexOf('..') !== -1) return;
                 if (name.indexOf('.') === -1) return;
+
+                var range = null;
+                var rangeMatch = name.match(/^(.+?)\s*\[(\d+),(\d+)\]$/);
+                if (rangeMatch) {
+                    name = rangeMatch[1];
+                    range = { start: parseInt(rangeMatch[2]), end: parseInt(rangeMatch[3]) };
+                }
                 var ext = name.split('.').pop();
                 if (ext.length > 6) return;
 
                 if (seen.indexOf(name) === -1) {
                     seen.push(name);
-                    files.push({ name: name, content: code });
+                    files.push({ name: name, content: code, range: range });
                 }
             });
         }
