@@ -24,8 +24,6 @@ Grab code from AI chats, save to your local project instantly. Zero API cost. Ze
 
 ## Optional: Local File Server
 
-To save files to your project directory:
-
 ```bash
 node server.js
 ```
@@ -36,38 +34,11 @@ Uses only Node.js built-in modules. **No npm install required.** Runs on `http:/
 
 ## The FreeClaw Protocol
 
-a Markdown-based protocol for structured code file delivery from AI to file systems.
+FreeClawAI follows the [FreeClaw Protocol](https://github.com/FreeClawAI/freeclaw-protocol) - a Markdown-based protocol for structured code file delivery from AI to local file systems.
 
-### Syntax
+The protocol supports full file replacement and range-based partial updates, making it ideal for AI-human collaborative coding workflows.
 
-```
-## relative/path/to/file.ext
-```language
-complete source code
-```
-```
-
-### Core Rules
-
-1. Each file MUST be represented by one h2 heading
-2. The heading MUST contain a relative file path
-3. The path MUST NOT start with / or ./
-4. The path MUST NOT contain .. (no directory traversal)
-5. Only forward slashes (/) are allowed
-6. No extra text or annotations are allowed in the path
-
-7. The h2 heading MUST be followed by a code block
-8. Parsers MAY skip blank lines or non-structural elements before the code block
-9. Only the FIRST code block after an h2 is considered valid
-
-10. The code block MUST contain complete, non-truncated source code
-11. Empty code blocks are NOT allowed
-
-12. Each h2 corresponds to exactly one file
-13. Duplicate file paths SHOULD be avoided; if present, the last occurrence SHOULD win
-
-14. Language tags in code blocks are OPTIONAL and for readability only
-15. Parsers SHOULD rely on file extensions, not language tags
+See the full specification at [github.com/FreeClawAI/freeclaw-protocol](https://github.com/FreeClawAI/freeclaw-protocol).
 
 ### Example
 
@@ -81,17 +52,11 @@ const Extractor = {
 };
 ```
 
-## css/main.css
+## css/main.css[10,15]
 ```css
-body {
-    margin: 0;
+.container {
+    display: flex;
 }
-```
-
-## README.md
-```markdown
-# Project
-This is a sample project.
 ```
 ````
 

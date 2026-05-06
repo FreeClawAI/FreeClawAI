@@ -34,34 +34,11 @@ node server.js
 
 ## FreeClaw 协议
 
-一套基于 Markdown 的代码文件交付协议，用于 AI 向文件系统输出结构化代码。
+FreeClawAI 遵循 [FreeClaw Protocol](https://github.com/FreeClawAI/freeclaw-protocol) - 一套基于 Markdown 的代码文件交付协议，用于 AI 向文件系统输出结构化代码。
 
-### 语法格式
+该协议支持完整文件替换和基于行范围的局部更新，非常适合 AI 与人类协作编码的工作流。
 
-```
-## relative/path/to/file.ext
-```language
-complete source code
-```
-```
-
-### 核心规则
-
-1. 每个文件使用一个 h2 标题表示文件路径
-2. 文件路径必须是相对于项目根目录的路径（如 js/services/extractor.js）
-3. h2 标题后应紧跟一个代码块
-4. 解析时允许跳过空行或非代码元素，直到找到第一个代码块
-5. 每个 h2 只对应一个代码块
-6. 代码块必须包含完整源代码，不得截断或省略
-7. 文件路径必须为规范相对路径：
-   - 不得以 / 或 ./ 开头
-   - 不得包含 .. 或路径回退
-   - 使用正斜杠 /
-   - 不得包含额外描述
-8. 若存在多个代码块，仅第一个视为有效
-9. 语言标记仅用于展示，解析应以文件扩展名为准
-10. 代码块内容不能为空，必须包含有效代码
-11. 同一响应中不得出现重复路径；若出现，以最后一个为准
+完整规范见 [github.com/FreeClawAI/freeclaw-protocol](https://github.com/FreeClawAI/freeclaw-protocol)。
 
 ### 示例
 
@@ -75,17 +52,11 @@ const Extractor = {
 };
 ```
 
-## css/main.css
+## css/main.css[10,15]
 ```css
-body {
-    margin: 0;
+.container {
+    display: flex;
 }
-```
-
-## README.md
-```markdown
-# 项目
-这是一个示例项目。
 ```
 ````
 
