@@ -1,4 +1,4 @@
-# FreeClaw
+# FreeClawAI
 
 **写代码，不花 Token。**
 

@@ -1,4 +1,4 @@
-# FreeClaw
+# FreeClawAI
 
 **Code AI, Free Forever.**
 
