@@ -34,12 +34,12 @@ function normalizeContent(content) {
     return content.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 }
 
-function readBinaryFile(fp) {
+function readTextFile(fp) {
     var buffer = fs.readFileSync(fp);
     return normalizeContent(buffer.toString('utf-8'));
 }
 
-function writeBinaryFile(fp, content) {
+function writeTextFile(fp, content) {
     fs.writeFileSync(fp, Buffer.from(content, 'utf-8'));
 }
 
@@ -66,89 +66,8 @@ function listFiles(dir) {
 function readFileContent(dir, filename) {
     const fp = resolvePath(dir, filename);
     if (!fs.existsSync(fp)) throw new Error('File not found');
-    var content = readBinaryFile(fp);
+    var content = readTextFile(fp);
     return { content, md5: crypto.createHash('md5').update(content).digest('hex') };
-}
-
-function readFileHex(dir, filename) {
-    const fp = resolvePath(dir, filename);
-    if (!fs.existsSync(fp)) throw new Error('File not found');
-    const buffer = fs.readFileSync(fp);
-    var hexLines = [];
-    var bytesPerLine = 16;
-    for (var i = 0; i < buffer.length; i += bytesPerLine) {
-        var offset = i.toString(16).padStart(8, '0');
-        var hexPart = [];
-        var asciiPart = [];
-        for (var j = 0; j < bytesPerLine; j++) {
-            if (i + j < buffer.length) {
-                var byte = buffer[i + j];
-                hexPart.push(byte.toString(16).padStart(2, '0'));
-                asciiPart.push(byte >= 32 && byte <= 126 ? String.fromCharCode(byte) : '.');
-            } else {
-                hexPart.push('  ');
-                asciiPart.push(' ');
-            }
-        }
-        hexLines.push(offset + '  ' + hexPart.join(' ') + '  |' + asciiPart.join('') + '|');
-    }
-    return hexLines.join('\n');
-}
-
-function getMimeType(filename) {
-    var ext = path.extname(filename).toLowerCase();
-    var mimes = {
-        '.png': 'image/png',
-        '.jpg': 'image/jpeg',
-        '.jpeg': 'image/jpeg',
-        '.gif': 'image/gif',
-        '.svg': 'image/svg+xml',
-        '.webp': 'image/webp',
-        '.ico': 'image/x-icon',
-        '.bmp': 'image/bmp',
-        '.pdf': 'application/pdf',
-        '.mp4': 'video/mp4',
-        '.webm': 'video/webm',
-        '.mp3': 'audio/mpeg',
-        '.wav': 'audio/wav',
-        '.ogg': 'audio/ogg',
-        '.woff': 'font/woff',
-        '.woff2': 'font/woff2',
-        '.ttf': 'font/ttf',
-        '.eot': 'application/vnd.ms-fontobject',
-        '.zip': 'application/zip',
-        '.tar': 'application/x-tar',
-        '.gz': 'application/gzip',
-        '.json': 'application/json',
-        '.xml': 'application/xml',
-        '.html': 'text/html',
-        '.css': 'text/css',
-        '.js': 'application/javascript',
-        '.txt': 'text/plain',
-        '.md': 'text/markdown'
-    };
-    return mimes[ext] || 'application/octet-stream';
-}
-
-function isTextFile(filename) {
-    var ext = path.extname(filename).toLowerCase();
-    var textExts = [
-        '.txt', '.md', '.json', '.xml', '.yaml', '.yml', '.html', '.htm',
-        '.css', '.scss', '.less', '.js', '.jsx', '.ts', '.tsx', '.vue',
-        '.svelte', '.py', '.java', '.rs', '.go', '.c', '.cpp', '.h', '.hpp',
-        '.sh', '.bat', '.cmd', '.ps1', '.sql', '.rb', '.php', '.swift',
-        '.kt', '.dart', '.lua', '.r', '.m', '.mm', '.toml', '.ini', '.cfg',
-        '.conf', '.log', '.env', '.gitignore', '.editorconfig', '.prettierrc',
-        '.eslintrc', '.csv', '.tsv'
-    ];
-    if (textExts.indexOf(ext) !== -1) {
-        return true;
-    }
-    var basename = path.basename(filename).toLowerCase();
-    if (basename === 'makefile' || basename === 'dockerfile' || basename === 'license') {
-        return true;
-    }
-    return false;
 }
 
 function writeFile(dir, filename, content, options) {
@@ -156,11 +75,11 @@ function writeFile(dir, filename, content, options) {
     const dirPath = path.dirname(fp);
     if (!fs.existsSync(dirPath)) fs.mkdirSync(dirPath, { recursive: true });
     if (fs.existsSync(fp) && options && options.md5) {
-        var currentContent = readBinaryFile(fp);
+        var currentContent = readTextFile(fp);
         var currentMd5 = crypto.createHash('md5').update(currentContent).digest('hex');
         if (currentMd5 !== options.md5 && !options.force) return { conflict: true, currentMd5: currentMd5 };
     }
-    writeBinaryFile(fp, content);
+    writeTextFile(fp, content);
     return { success: true, md5: crypto.createHash('md5').update(content).digest('hex') };
 }
 
@@ -177,7 +96,7 @@ function findFileInfo(rootDir, targetName) {
     if (!fs.existsSync(fp)) return null;
     try {
         var st = fs.statSync(fp);
-        var content = readBinaryFile(fp);
+        var content = readTextFile(fp);
         return {
             path: fp,
             size: content.length,
@@ -239,7 +158,7 @@ const server = http.createServer(function(req, res) {
                     try {
                         if (!fs.existsSync(resolved)) fs.mkdirSync(resolved, { recursive: true });
                         var testFile = path.join(resolved, '.freeclaw_test');
-                        writeBinaryFile(testFile, 'test');
+                        writeTextFile(testFile, 'test');
                         fs.unlinkSync(testFile);
                         validDirs.push(resolved);
                     } catch (e) {}
@@ -254,9 +173,8 @@ const server = http.createServer(function(req, res) {
                 res.end(JSON.stringify({ files: files }));
             } else if (req.url === '/api/files/batch' && req.method === 'POST') {
                 var dirs = data.dirs || [];
-                var flat = data.flat !== false;
                 var results = {};
-                dirs.forEach(function(d) { results[d] = listFiles(d, flat); });
+                dirs.forEach(function(d) { results[d] = listFiles(d); });
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ results: results }));
             } else if (req.url === '/api/files/find' && req.method === 'POST') {
@@ -281,71 +199,9 @@ const server = http.createServer(function(req, res) {
             } else if (req.url === '/api/files/read' && req.method === 'POST') {
                 var filename = data.filename || '';
                 var dir = data.dir || '';
-                var fp = resolvePath(dir, filename);
-                if (!fs.existsSync(fp)) {
-                    res.writeHead(404, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify({ error: 'File not found' }));
-                    return;
-                }
-
-                if (isTextFile(filename)) {
-                    var content = readBinaryFile(fp);
-                    res.writeHead(200, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify({
-                        content: content,
-                        md5: crypto.createHash('md5').update(content).digest('hex')
-                    }));
-                } else {
-                    var hexContent = readFileHex(dir, filename);
-                    res.writeHead(200, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify({
-                        content: hexContent,
-                        hex: true
-                    }));
-                }
-            } else if (req.url.startsWith('/api/files/raw') && req.method === 'GET') {
-                var urlObj = new URL(req.url, 'http://localhost:' + PORT);
-                var filePath = urlObj.searchParams.get('path') || '';
-                if (!filePath) {
-                    res.writeHead(400, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify({ error: 'Missing path parameter' }));
-                    return;
-                }
-                var fullPath = path.resolve(filePath);
-                if (!fs.existsSync(fullPath)) {
-                    res.writeHead(404, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify({ error: 'File not found' }));
-                    return;
-                }
-                var mimeType = getMimeType(filePath);
-                var rawBuffer = fs.readFileSync(fullPath);
-                res.writeHead(200, {
-                    'Content-Type': mimeType,
-                    'Content-Length': rawBuffer.length,
-                    'Cache-Control': 'no-cache'
-                });
-                res.end(rawBuffer);
-            } else if (req.url.startsWith('/api/files/raw') && req.method === 'POST') {
-                var filePath = data.path || '';
-                if (!filePath) {
-                    res.writeHead(400, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify({ error: 'Missing path parameter' }));
-                    return;
-                }
-                var fullPath = path.resolve(filePath);
-                if (!fs.existsSync(fullPath)) {
-                    res.writeHead(404, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify({ error: 'File not found' }));
-                    return;
-                }
-                var mimeType = getMimeType(filePath);
-                var rawBuffer = fs.readFileSync(fullPath);
-                res.writeHead(200, {
-                    'Content-Type': mimeType,
-                    'Content-Length': rawBuffer.length,
-                    'Cache-Control': 'no-cache'
-                });
-                res.end(rawBuffer);
+                var result = readFileContent(dir, filename);
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify(result));
             } else if (req.url === '/api/files/write' && req.method === 'POST') {
                 var result = writeFile(data.dir, data.filename, data.content, { md5: data.md5, force: data.force });
                 if (result.conflict) { res.writeHead(409, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'File modified', currentMd5: result.currentMd5 })); }

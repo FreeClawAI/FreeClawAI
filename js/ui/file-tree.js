@@ -81,17 +81,19 @@ const FileTree = {
 
     _isMediaFile: function(name) {
         var ext = name.split('.').pop().toLowerCase();
-        var mediaExts = ['png','jpg','jpeg','gif','svg','webp','ico','bmp','mp4','webm','avi','mov','mkv','mp3','wav','ogg','flac','aac','pdf','woff','woff2','ttf','eot','zip','tar','gz','rar','7z'];
+        var mediaExts = ['png','jpg','jpeg','gif','svg','webp','ico','bmp',
+                         'mp4','webm','avi','mov','mkv','mp3','wav','ogg','flac','aac',
+                         'woff','woff2','ttf','eot','pdf','zip','tar','gz','rar','7z'];
         return mediaExts.indexOf(ext) !== -1;
     },
 
     _isPreviewableFile: function(name) {
         var ext = name.split('.').pop().toLowerCase();
-        var previewable = ['cs','js','ts','jsx','tsx','html','htm','css','scss','less','json','xml','yaml','yml','md','txt','py','java','rs','go','c','cpp','h','hpp','sh','bat','cmd','ps1','sql','vue','svelte','rb','php','swift','kt','dart','lua','r','m','mm','toml','ini','cfg','conf','log','csv','tsv'];
-        if (previewable.indexOf(ext) !== -1) return true;
-        var basename = name.toLowerCase();
-        if (['makefile','dockerfile','license','gitignore','env','editorconfig','prettierrc','eslintrc'].indexOf(basename) !== -1) return true;
-        return false;
+        var binaryExts = ['png','jpg','jpeg','gif','svg','webp','ico','bmp',
+                          'mp4','webm','avi','mov','mkv','mp3','wav','ogg','flac','aac',
+                          'woff','woff2','ttf','eot','pdf','zip','tar','gz','rar','7z'];
+        if (binaryExts.indexOf(ext) !== -1) return false;
+        return true;
     },
 
     _openRaw: function(fileDir, fileName) {
@@ -177,10 +179,7 @@ const FileTree = {
                 }
 
                 if (!self._isPreviewableFile(fileName)) {
-                    Preview.show({
-                        name: getShortName(fileName),
-                        content: I18n.t('[Unable to read file]')
-                    });
+                    self._openRaw(fileDir, fileName);
                     return;
                 }
 
