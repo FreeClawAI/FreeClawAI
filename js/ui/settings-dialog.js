@@ -55,7 +55,12 @@ const SettingsDialog = {
             title: I18n.t('Local File Service'),
             body: body,
             buttons: [
-                { text: I18n.t('Confirm'), id: 'aiCfgClose', primary: true, onClick: function() { DialogStack.closeAll(); } }
+                { text: I18n.t('Confirm'), id: 'aiCfgClose', primary: true, onClick: async function() {
+                    DialogStack.closeAll();
+                    await FileService.refresh();
+                    FileTree.render();
+                    FileTree.initEvents();
+                }}
             ],
             onRender: function() {
                 document.getElementById('aiCfgTestConn').onclick = function() { self._testConn(); };
@@ -76,6 +81,9 @@ const SettingsDialog = {
                         self._dirs.unshift(dir);
                         Config._data.workDirs = self._dirs.slice();
                         await Config.save();
+                        await FileService.refresh();
+                        FileTree.render();
+                        FileTree.initEvents();
                         self._render(currentUrl);
                     };
                 });
@@ -91,6 +99,9 @@ const SettingsDialog = {
                                 if (j.success && j.dirs) { self._dirs = j.dirs; Config._data.workDirs = j.dirs; await Config.save(); }
                             } catch (e) {}
                         }
+                        await FileService.refresh();
+                        FileTree.render();
+                        FileTree.initEvents();
                         self._render(currentUrl);
                     };
                 });
@@ -108,6 +119,9 @@ const SettingsDialog = {
                 this._dirs = j.dirs;
                 Config._data.workDirs = j.dirs;
                 await Config.save();
+                await FileService.refresh();
+                FileTree.render();
+                FileTree.initEvents();
                 Toast.show(I18n.t('✅ Added'));
             } else {
                 Toast.show(I18n.t('❌ Cannot access this directory'), 'error');

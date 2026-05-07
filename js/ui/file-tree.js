@@ -54,11 +54,11 @@ const FileTree = {
                     else if (ft === 'user') icon = '✏️';
                     var cls = 'ai-tree-file';
                     if (ft === 'ai') cls += ' ai-ai-file';
-                    var sizeStr = child.size ? ' <span style="color:#999;font-size:11px">(' + self._formatSize(child.size) + ')</span>' : '';
                     var displayName = getShortName(child.name);
                     if (child.range) {
                         displayName += ' [' + child.range.start + ',' + child.range.end + ']';
                     }
+                    var sizeStr = child.size ? ' <span style="color:#999;font-size:11px">(' + self._formatSize(child.size) + ')</span>' : '';
                     html += '<div class="' + cls + '" data-name="' + Utils.escAttr(child.name) + '" data-dir="' + Utils.escAttr(child.workDir || dir) +
                         '" data-filetype="' + Utils.escAttr(ft) + '" data-fullpath="' + Utils.escAttr(child.fullPath || '') +
                         '" data-size="' + (child.size || 0) + '" style="padding-left:' + (indent + 16) + 'px">' +
@@ -129,11 +129,11 @@ const FileTree = {
                                 var icon = '';
                                 if (ft === 'ai') icon = '🤖';
                                 else if (ft === 'user') icon = '✏️';
-                                var sizeStr = child.size ? ' <span style="color:#999;font-size:11px">(' + self._formatSize(child.size) + ')</span>' : '';
                                 var displayName = getShortName(child.name);
                                 if (child.range) {
                                     displayName += ' [' + child.range.start + ',' + child.range.end + ']';
                                 }
+                                var sizeStr = child.size ? ' <span style="color:#999;font-size:11px">(' + self._formatSize(child.size) + ')</span>' : '';
                                 html += '<div class="ai-tree-file' + (ft === 'ai' ? ' ai-ai-file' : '') + '" data-name="' + Utils.escAttr(child.name) +
                                     '" data-dir="' + Utils.escAttr(child.workDir || dir) + '" data-filetype="' + Utils.escAttr(ft) +
                                     '" data-fullpath="' + Utils.escAttr(child.fullPath || '') + '" data-size="' + (child.size || 0) +
@@ -176,11 +176,20 @@ const FileTree = {
                     return;
                 }
 
+                if (!self._isPreviewableFile(fileName)) {
+                    Preview.show({
+                        name: getShortName(fileName),
+                        content: I18n.t('[Unable to read file]')
+                    });
+                    return;
+                }
+
                 var file = FileService.getFileByName(fileName, fileType);
                 if (!file) return;
 
                 if (fileType === 'original') {
                     await self._loadContent(file, file.workDir || fileDir);
+                    Editor.startEdit(file);
                     return;
                 }
 
