@@ -6,9 +6,9 @@ var DEFAULT_MESSAGES = function() {
             id: 'fc-protocol',
             title: zh ? 'FreeClaw 协议 v2（完整）' : 'FreeClaw Protocol v2 (full)',
             content: zh ?
-                '# FreeClaw 协议 v2\n\n这是一套结构化代码交付协议。输出代码时请遵循以下规则。\n\n## 规则\n\n1. 每个文件使用二级标题，标题为相对文件路径。示例：## js/services/utils.js\n2. 部分文件更新时，在路径后加 [start,end] 行范围。示例：## src/app.js [10,25]\n3. 标题只能包含相对路径和可选行范围。不得包含额外文字。\n4. 路径必须使用正斜杠 (/)，不能使用反斜杠 (\\\ )。\n5. 标题后必须紧跟带语言标记的代码块。\n6. 代码块必须包含完整文件内容或精确范围内容。绝不能使用 "..." 截断。\n7. 每个文件独立一个标题+代码块对。\n8. 一次回复可以包含多个文件。\n9. 回复第一行应为工作目录声明：## /absolute/path/to/project\n10. 禁止空代码块。\n\n## 示例输出\n\n## /Users/dev/myproject\n\n## src/utils.js\n```javascript\nconst Utils = {\n    hello() {\n        return "hello";\n    }\n}\n```\n\n## src/style.css [1,5]\n```css\nbody {\n    margin: 0;\n    padding: 0;\n    font-family: sans-serif;\n}\n```\n\n## README.md\n```markdown\n# 我的项目\n这是一个示例。\n```'
+                '# FreeClaw 协议 v2\n\n这是一套结构化代码交付协议。输出代码时请遵循以下规则。\n\n## 规则\n\n1. 每个文件使用二级标题，标题为相对文件路径。示例：## js/services/utils.js\n2. **只有用户可以使用行范围进行部分更新。AI 禁止使用 [start,end] 语法。AI 必须始终输出完整文件。**\n3. 标题只能包含相对路径。不得包含额外文字。\n4. 路径必须使用正斜杠 (/)，不能使用反斜杠 (\\\ )。\n5. 标题后必须紧跟带语言标记的代码块。\n6. 代码块必须包含完整文件内容。绝不能使用 "..." 截断。\n7. 每个文件独立一个标题+代码块对。\n8. 一次回复可以包含多个文件。\n9. 回复第一行应为工作目录声明：## /absolute/path/to/project\n10. 禁止空代码块。\n\n## 示例输出\n\n## /Users/dev/myproject\n\n## src/utils.js\n```javascript\nconst Utils = {\n    hello() {\n        return "hello";\n    }\n}\n```\n\n## README.md\n```markdown\n# 我的项目\n这是一个示例。\n```'
                 :
-                '# FreeClaw Protocol v2\n\nThis is a structured code delivery protocol. You MUST follow these rules when outputting code.\n\n## Rules\n\n1. Each file MUST use a level-2 heading with the relative file path. Example: ## js/services/utils.js\n2. For partial file updates, append [start,end] line range to the path. Example: ## src/app.js [10,25]\n3. The heading MUST contain ONLY the relative path and optional range. No extra text.\n4. The path MUST use forward slashes (/). Do NOT use backslashes (\\).\n5. The heading MUST be followed by a code block with the language tag.\n6. The code block MUST contain the COMPLETE file content or EXACT range content. Never truncate with "...".\n7. Each file MUST be in its own heading+code-block pair.\n8. You MAY include multiple files in one response.\n9. The first line of the response SHOULD be a work directory declaration: ## /absolute/path/to/project\n10. Empty code blocks are FORBIDDEN.\n\n## Example Output\n\n## /Users/dev/myproject\n\n## src/utils.js\n```javascript\nconst Utils = {\n    hello() {\n        return "hello";\n    }\n}\n```\n\n## src/style.css [1,5]\n```css\nbody {\n    margin: 0;\n    padding: 0;\n    font-family: sans-serif;\n}\n```\n\n## README.md\n```markdown\n# My Project\nThis is a sample.\n```'
+                '# FreeClaw Protocol v2\n\nThis is a structured code delivery protocol. You MUST follow these rules when outputting code.\n\n## Rules\n\n1. Each file MUST use a level-2 heading with the relative file path. Example: ## js/services/utils.js\n2. **Only the USER may use line ranges for partial updates. The AI MUST NOT use [start,end] syntax. The AI MUST always output the complete file.**\n3. The heading MUST contain ONLY the relative path. No extra text.\n4. The path MUST use forward slashes (/). Do NOT use backslashes (\\).\n5. The heading MUST be followed by a code block with the language tag.\n6. The code block MUST contain the COMPLETE file content. Never truncate with "...".\n7. Each file MUST be in its own heading+code-block pair.\n8. You MAY include multiple files in one response.\n9. The first line of the response SHOULD be a work directory declaration: ## /absolute/path/to/project\n10. Empty code blocks are FORBIDDEN.\n\n## Example Output\n\n## /Users/dev/myproject\n\n## src/utils.js\n```javascript\nconst Utils = {\n    hello() {\n        return "hello";\n    }\n}\n```\n\n## README.md\n```markdown\n# My Project\nThis is a sample.\n```'
         },
         {
             id: 'fc-rules-1',
@@ -36,11 +36,11 @@ var DEFAULT_MESSAGES = function() {
         },
         {
             id: 'fc-rules-4',
-            title: zh ? '规则：行范围部分更新' : 'Rule: Partial updates with line ranges',
+            title: zh ? '规则：行范围仅限用户使用' : 'Rule: Line ranges are for users only',
             content: zh ?
-                '如果只需修改特定行，标题会包含行范围：## file.js [10,25]。你必须先读取原始文件，然后只输出代码块中变更的行。工具会自动合并。'
+                '行范围 [start,end] 仅限用户使用。AI 不得使用行范围。AI 必须始终输出完整文件。如果我需要修改特定行，我会在标题中用 [start,end] 指定。工具会自动合并。'
                 :
-                'If I only need to modify specific lines, the heading will include a line range: ## file.js [10,25]. You MUST read the original file first, then output ONLY the changed lines in the code block. The tool will merge them automatically.'
+                'Line ranges [start,end] are for USER use ONLY. The AI must NOT use line ranges. The AI must always output the complete file. If I need to modify specific lines, I will specify [start,end] in the heading. The tool will merge them automatically.'
         },
         {
             id: 'fc-rules-5',

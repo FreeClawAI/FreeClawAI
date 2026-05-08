@@ -142,6 +142,25 @@ const server = http.createServer(function(req, res) {
             if (req.url === '/api/ping' && req.method === 'GET') {
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ status: 'ok' }));
+            } else if (req.url.startsWith('/api/files/raw') && req.method === 'GET') {
+                var urlObj = new URL(req.url, 'http://localhost');
+                var filePath = urlObj.searchParams.get('path') || '';
+                if (!filePath) { res.writeHead(400); res.end('Missing path'); return; }
+                try {
+                    var content = fs.readFileSync(filePath);
+                    var ext = path.extname(filePath).toLowerCase();
+                    var mimeTypes = {
+                        '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
+                        '.gif': 'image/gif', '.svg': 'image/svg+xml', '.ico': 'image/x-icon',
+                        '.webp': 'image/webp', '.bmp': 'image/bmp',
+                        '.mp4': 'video/mp4', '.webm': 'video/webm', '.mp3': 'audio/mpeg',
+                        '.wav': 'audio/wav', '.ogg': 'audio/ogg',
+                        '.woff': 'font/woff', '.woff2': 'font/woff2', '.ttf': 'font/ttf',
+                        '.pdf': 'application/pdf'
+                    };
+                    res.writeHead(200, { 'Content-Type': mimeTypes[ext] || 'application/octet-stream' });
+                    res.end(content);
+                } catch (e) { res.writeHead(404); res.end('Not found'); }
             } else if (req.url === '/api/paths' && req.method === 'GET') {
                 var homeDir = os.homedir();
                 var paths = { desktop: path.join(homeDir, 'Desktop'), documents: path.join(homeDir, 'Documents'), downloads: path.join(homeDir, 'Downloads'), home: homeDir, drives: [] };

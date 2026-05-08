@@ -76,7 +76,7 @@ const DiffDialog = {
                     var f = aiFile || {}; f._savePath = savePath; f.content = modified;
                     try { await SaveDialog._saveOne(f); FileService.removeAiFile(filename); await FileService.refreshAndRender(); Toast.show(I18n.t('Saved {0} files', 1)); }
                     catch (e) { Toast.show(I18n.t('Failed: {0}', filename), 'error'); }
-                    finally { DialogStack.close(); if (onSaved) { var uf = FileService.getUnsavedAiFiles().concat(FileService.getUserFiles()); onSaved(uf); } }
+                    finally { DialogStack.close(); if (onSaved) { var uf = FileService.getUnsavedAiFiles().concat(FileService.getUserFiles()); uf = uf.filter(function(item) { return item.name !== filename; }); onSaved(uf); } }
                 }},
                 { text: I18n.t('Cancel'), id: 'aiDiffCancel', onClick: function() { DialogStack.close(); } }
             ],
