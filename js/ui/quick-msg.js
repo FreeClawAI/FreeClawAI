@@ -3,6 +3,7 @@ const QuickMsg = {
     _messages: [],
 
     show: async function() {
+        DialogStack.closeAll();
         await this._load();
         this._render();
     },
