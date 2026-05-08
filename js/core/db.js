@@ -54,5 +54,15 @@ const DB = {
         if (!this._db) return [];
         const store = this._db.transaction('templates', 'readonly').objectStore('templates');
         return new Promise(resolve => { const req = store.getAll(); req.onsuccess = () => resolve(req.result || []); });
+    },
+    async saveQuickMessages(messages) {
+        if (!this._db) return;
+        const store = this._db.transaction('files', 'readwrite').objectStore('files');
+        return new Promise(resolve => { store.put({ key: '__quick_msgs__', messages: messages, updatedAt: Date.now() }); resolve(); });
+    },
+    async getQuickMessages() {
+        if (!this._db) return [];
+        const store = this._db.transaction('files', 'readonly').objectStore('files');
+        return new Promise(resolve => { const req = store.get('__quick_msgs__'); req.onsuccess = () => resolve(req.result ? req.result.messages : null); req.onerror = () => resolve(null); });
     }
 };
