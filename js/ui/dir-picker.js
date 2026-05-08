@@ -3,22 +3,21 @@ var DirPicker = {
     _currentPath: '',
     _onSelect: null,
     _paths: {},
+    _loading: false,
 
     show: function(currentPath, onSelect) {
         this._currentPath = currentPath || Config.mainDir || '';
         this._onSelect = onSelect;
+        var self = this;
         this._loadPaths().then(function() {
-            DirPicker._render();
-            DirPicker._navigate(DirPicker._currentPath);
+            self._render();
+            self._navigate(self._currentPath);
         });
     },
 
     _loadPaths: async function() {
-        try {
-            this._paths = await Api.getPaths();
-        } catch (e) {
-            this._paths = { desktop: '', documents: '', downloads: '', home: '', drives: [] };
-        }
+        try { this._paths = await Api.getPaths(); }
+        catch (e) { this._paths = { desktop: '', documents: '', downloads: '', home: '', drives: [] }; }
     },
 
     _render: function() {
@@ -72,15 +71,11 @@ var DirPicker = {
                     var path = self._currentPath;
                     if (path === '__drives__') { Toast.show('Invalid path', 'error'); return; }
                     var selected = list.querySelector('.ai-picker-item.active');
-                    if (selected && selected.dataset.fullpath) {
-                        path = selected.dataset.fullpath;
-                    }
+                    if (selected && selected.dataset.fullpath) path = selected.dataset.fullpath;
                     if (self._onSelect) self._onSelect(path);
                     DialogStack.close();
                 };
-                document.getElementById('aiPickerCancel').onclick = function() {
-                    DialogStack.close();
-                };
+                document.getElementById('aiPickerCancel').onclick = function() { DialogStack.close(); };
                 document.getElementById('aiPickerGoBtn').onclick = function() {
                     var p = document.getElementById('aiPickerPathInput').value.trim();
                     if (p) self._navigate(p);
@@ -106,42 +101,43 @@ var DirPicker = {
     },
 
     _navigate: async function(dir) {
-        if (!dir || typeof dir !== 'string') return;
-        this._currentPath = dir.replace(/\\/g, '/');
-        this._updatePathInput();
-        this._renderBreadcrumb();
-        var list = document.getElementById('aiPickerList');
-        if (!list) return;
-        list.innerHTML = '<div style="text-align:center;color:#999;padding:20px">' + I18n.t('Loading...') + '</div>';
-        if (dir === '__drives__') { this._loadDrives(); return; }
+        if (this._loading) return;
+        this._loading = true;
+        if (!dir || typeof dir !== 'string') { this._loading = false; return; }
         try {
-            var files = await Api.listFiles(dir);
-            var dirs = files.filter(function(f) { return f.isDir === true; });
-            var html = '';
-            if (dirs.length === 0) {
-                html = '<div style="text-align:center;color:#999;padding:20px">' + I18n.t('No subfolders') + '</div>';
-            } else {
-                var self = this;
-                dirs.forEach(function(d) {
-                    var entryName = self._getDirName(d.fullPath || '');
-                    html += '<div class="ai-picker-item" data-fullpath="' + Utils.escAttr(String(d.fullPath || '')) + '" style="padding:6px 8px;cursor:pointer;border-bottom:1px solid #f0f0f0">📁 ' + Utils.esc(entryName) + '</div>';
+            this._currentPath = dir.replace(/\\/g, '/');
+            this._updatePathInput();
+            this._renderBreadcrumb();
+            var list = document.getElementById('aiPickerList');
+            if (!list) { this._loading = false; return; }
+            list.innerHTML = '<div style="text-align:center;color:#999;padding:20px">' + I18n.t('Loading...') + '</div>';
+            if (dir === '__drives__') { this._loadDrives(); this._loading = false; return; }
+            try {
+                var files = await Api.listFiles(dir);
+                var dirs = files.filter(function(f) { return f.isDir === true; });
+                var html = '';
+                if (dirs.length === 0) {
+                    html = '<div style="text-align:center;color:#999;padding:20px">' + I18n.t('No subfolders') + '</div>';
+                } else {
+                    dirs.forEach(function(d) {
+                        var entryName = self._getDirName(d.fullPath || '');
+                        html += '<div class="ai-picker-item" data-fullpath="' + Utils.escAttr(String(d.fullPath || '')) + '" style="padding:6px 8px;cursor:pointer;border-bottom:1px solid #f0f0f0">📁 ' + Utils.esc(entryName) + '</div>';
+                    });
+                }
+                list.innerHTML = html;
+                list.querySelectorAll('.ai-picker-item').forEach(function(item) {
+                    item.ondblclick = function() { self._navigate(this.dataset.fullpath); };
+                    item.onclick = function() {
+                        list.querySelectorAll('.ai-picker-item').forEach(function(el) { el.classList.remove('active'); });
+                        this.classList.add('active');
+                    };
                 });
+            } catch (e) {
+                list.innerHTML = '<div style="text-align:center;color:#dc3545;padding:20px">❌ ' + I18n.t('Cannot connect. Start node server.js') + '</div>';
+                Toast.show(I18n.t('Cannot connect. Start node server.js'), 'error');
             }
-            list.innerHTML = html;
-            var self = this;
-            list.querySelectorAll('.ai-picker-item').forEach(function(item) {
-                item.ondblclick = function() {
-                    var fp = this.dataset.fullpath;
-                    if (fp) self._navigate(fp);
-                };
-                item.onclick = function() {
-                    list.querySelectorAll('.ai-picker-item').forEach(function(el) { el.classList.remove('active'); });
-                    this.classList.add('active');
-                };
-            });
-        } catch (e) {
-            list.innerHTML = '<div style="text-align:center;color:#dc3545;padding:20px">❌ ' + I18n.t('Cannot connect. Start node server.js') + '</div>';
-            Toast.show(I18n.t('Cannot connect. Start node server.js'), 'error');
+        } finally {
+            this._loading = false;
         }
     },
 
@@ -172,16 +168,9 @@ var DirPicker = {
         var current = '';
         var self = this;
         parts.forEach(function(part, i) {
-            if (part.indexOf(':') !== -1) {
-                current = part + '/';
-            } else {
-                current = current.replace(/\/$/, '') + '/' + part;
-            }
-            if (i === parts.length - 1) {
-                html += '<strong>' + Utils.esc(part) + '</strong>';
-            } else {
-                html += '<span class="ai-breadcrumb-link" data-path="' + Utils.escAttr(current) + '" style="cursor:pointer;color:#007bff">' + Utils.esc(part) + '</span> &gt; ';
-            }
+            current = i === 0 && part.indexOf(':') !== -1 ? part + '/' : current.replace(/\/$/, '') + '/' + part;
+            if (i === parts.length - 1) html += '<strong>' + Utils.esc(part) + '</strong>';
+            else html += '<span class="ai-breadcrumb-link" data-path="' + Utils.escAttr(current) + '" style="cursor:pointer;color:#007bff">' + Utils.esc(part) + '</span> &gt; ';
         });
         bc.innerHTML = html;
         bc.querySelectorAll('.ai-breadcrumb-link').forEach(function(link) {
