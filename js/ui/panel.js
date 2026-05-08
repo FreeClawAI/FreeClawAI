@@ -30,7 +30,7 @@ const Panel = {
         this.el.innerHTML =
             '<div class="ai-main">' +
                 '<div class="ai-left">' +
-                    '<div class="ai-left-header">' +
+                    '<div class="ai-left-header" style="display:none">' +
                         '<input id="aiSearchFiles" class="ai-search" placeholder="' + I18n.t('Search...') + '">' +
                         '<button id="aiRefreshBtn" title="' + I18n.t('Extract AI files') + '">🔍</button>' +
                         '<button id="aiMenuBtn" title="' + I18n.t('Menu') + '">☰</button>' +
@@ -79,7 +79,6 @@ const Panel = {
         if (Editor && typeof Editor.hasChanges === 'function' && Editor.hasChanges()) {
             if (!confirm(I18n.t('Unsaved changes. Close anyway?'))) return;
         }
-        // Cancel line selection to avoid interfering with AI page
         Preview._selectStart = null;
         Preview._selectEnd = null;
         Preview._clickCount = 0;
