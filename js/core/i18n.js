@@ -120,6 +120,7 @@ var I18N_ZH = {
     'Click to send': '点击发送',
     'Quick Send': '快速发送',
     'Protocol': '协议',
+    'File List': '文件列表',
     'Content exceeds limit ({0}/100000)': '内容超出限制 ({0}/100000)'
 };
 

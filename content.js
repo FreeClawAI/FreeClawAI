@@ -7,6 +7,7 @@ var FreeClawFirstRun = true;
     Panel.init();
     QuickSave.init();
     SendBtn.init();
+    AiSitesDialog.init();
 
     DB.open().then(function() {
         return Config.load();

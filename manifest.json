@@ -52,6 +52,8 @@
       "js/ui/context-menu.js",
       "js/ui/dir-picker.js",
       "js/ui/quick-msg.js",
+      "js/ui/ai-sites-dialog.js",
+      "js/ui/code-folder.js",
       "js/input/keyboard.js",
       "js/input/dnd.js",
       "content.js"

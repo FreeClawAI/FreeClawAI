@@ -19,6 +19,7 @@ const QuickMsg = {
     _render: function() {
         var self = this;
         var listHtml = '';
+
         this._messages.forEach(function(m, i) {
             listHtml += '<div class="ai-proto-item" data-idx="' + i + '" style="display:flex;align-items:center;padding:8px 10px;border-bottom:1px solid #eee;cursor:pointer">' +
                 '<span style="flex:1;font-size:13px">' + Utils.esc(m.title) + '</span>' +
@@ -27,17 +28,14 @@ const QuickMsg = {
                 '</div>';
         });
 
-        listHtml += '<div class="ai-proto-item" id="aiFileListBtn" style="display:flex;align-items:center;padding:8px 10px;border-bottom:1px solid #eee;cursor:pointer;background:#e3f2fd">' +
-            '<span style="flex:1;font-size:13px">📁 ' + I18n.t('File List') + '</span>' +
-            '<span style="font-size:11px;color:#999;margin-right:8px">' + I18n.t('Click to send') + '</span>' +
-            '</div>';
-
         var body = '<div style="max-height:50vh;overflow:auto">' + listHtml + '</div>';
 
         DialogStack.show('quickmsg', {
             title: I18n.t('Quick Send'),
             body: body,
             buttons: [
+                { text: I18n.t('File List'), id: 'aiFileListBtn', onClick: function() { DialogStack.close(); self._sendFileList(); } },
+                { text: I18n.t('Settings'), id: 'aiSitesBtn', onClick: function() { DialogStack.closeAll(); AiSitesDialog.show(); } },
                 { text: I18n.t('+ New'), id: 'aiMsgAdd', onClick: function() { self._edit(-1); } },
                 { text: I18n.t('Close'), id: 'aiMsgClose', onClick: function() { DialogStack.close(); } }
             ],
@@ -48,10 +46,6 @@ const QuickMsg = {
                 document.querySelectorAll('.ai-proto-item').forEach(function(item) {
                     item.addEventListener('click', function(e) {
                         if (e.target.closest('button')) return;
-                        if (this.id === 'aiFileListBtn') {
-                            self._sendFileList();
-                            return;
-                        }
                         var m = self._messages[parseInt(this.dataset.idx)];
                         var ed = Sender._findEditor();
                         if (ed) {
@@ -75,7 +69,6 @@ const QuickMsg = {
         var dirs = Config.workDirs || [];
         if (!dirs.length) {
             Toast.show(I18n.t('No work directories configured'), 'error');
-            DialogStack.close();
             return;
         }
 
@@ -96,7 +89,6 @@ const QuickMsg = {
         } catch (e) {
             Toast.show(I18n.t('Cannot connect. Start node server.js'), 'error');
         }
-        DialogStack.close();
     },
 
     _edit: function(idx) {

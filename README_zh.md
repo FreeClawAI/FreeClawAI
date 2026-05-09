@@ -34,28 +34,61 @@ node server.js
 
 ## FreeClaw 协议
 
-FreeClawAI 遵循 [FreeClaw Protocol](https://github.com/FreeClawAI/freeclaw-protocol) - 一套基于 Markdown 的代码文件交付协议，用于 AI 向文件系统输出结构化代码。
+FreeClawAI 遵循 FreeClaw 协议 - 一套基于 Markdown 的代码文件交付协议，用于 AI 向文件系统输出结构化代码。
 
-该协议支持完整文件替换和基于行范围的局部更新，非常适合 AI 与人类协作编码的工作流。
+### 规则
 
-完整规范见 [github.com/FreeClawAI/freeclaw-protocol](https://github.com/FreeClawAI/freeclaw-protocol)。
+1. 每个文件使用一个 h2 标题表示文件路径
+2. 文件路径必须是相对于项目根目录的路径（如 js/services/extractor.js）
+
+3. 文件路径必须是规范路径：
+   - 不得以 / 或 ./ 开头
+   - 不得包含 ..（禁止路径回退）
+   - 必须使用正斜杠 /
+   - 不得包含额外描述（如 "a.js (updated)"）
+
+4. 每个 h2 后必须跟一个代码块
+5. 标题与代码块之间的空行或非结构性内容，解析时可以跳过
+6. 若标题后存在多个代码块，仅第一个有效
+
+7. 每个 h2 只对应一个文件
+8. 代码块必须是完整源码，不得截断或省略
+9. 代码块不能为空
+
+10. 同一响应中允许出现重复路径：
+    - 代表完整替换
+    - 同名文件的多个条目均有效，用户可选择保留哪个
+    - 解析器应保留所有条目，不做自动覆盖
+
+11. 语言标记仅用于展示，文件类型以扩展名为准
+
+12. 如果你只输出了文件的部分内容（如仅修改的几行），必须随后用完整文件格式重新发送整个文件。已经符合协议格式的完整文件无需重复发送。
+
+### 解析模型
+
+一个符合协议的解析器应当：
+
+1. 遍历所有 h2 标题
+2. 提取标题内容作为文件路径
+3. 向后查找最近的代码块（pre > code）
+4. 提取代码内容
+5. 写入对应路径的文件
 
 ### 示例
 
 ````markdown
-## js/services/extractor.js
+## src/utils.js
 ```javascript
-const Extractor = {
-    extract() {
-        return files;
-    }
-};
+function hello() {
+    return "hello";
+}
 ```
 
-## css/main.css[10,15]
+## src/style.css
 ```css
-.container {
-    display: flex;
+body {
+    margin: 0;
+    font-family: sans-serif;
 }
 ```
 ````
@@ -119,9 +152,9 @@ AI 回复代码 → 点击 📁 → 查看/编辑 → 批量保存
 | 平台 | 状态 |
 |------|------|
 | chat.deepseek.com | ✅ |
-| chatgpt.com | 计划中 |
-| claude.ai | 计划中 |
-| gemini.google.com | 计划中 |
+| chatgpt.com | ✅ |
+| claude.ai | ✅ |
+| gemini.google.com | ✅ |
 
 ---
 
