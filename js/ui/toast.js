@@ -8,7 +8,7 @@ const Toast = {
         if (!el) {
             el = document.createElement('div');
             el.id = 'ai-toast';
-            el.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999999;padding:10px 20px;border-radius:8px;font-size:14px;color:white;text-align:center;max-width:80%;box-shadow:0 4px 20px rgba(0,0,0,0.3);pointer-events:none';
+            el.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:10000001;padding:10px 20px;border-radius:8px;font-size:14px;color:white;text-align:center;max-width:80%;box-shadow:0 4px 20px rgba(0,0,0,0.3);pointer-events:none';
             document.body.appendChild(el);
         }
         el.style.background = type === 'error' ? '#dc3545' : '#28a745';
