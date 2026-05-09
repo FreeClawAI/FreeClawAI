@@ -158,7 +158,9 @@ const SaveDialog = {
                 if (fileItems.length === 0) {
                     if (selectAll) selectAll.style.display = 'none';
                     if (countSpan) countSpan.textContent = '0 / 0';
-                    if (confirmBtn) confirmBtn.onclick = function() {};
+                    if (confirmBtn) confirmBtn.onclick = function() {
+                        Toast.show(I18n.t('No files to save'), 'error');
+                    };
                     return;
                 }
 
