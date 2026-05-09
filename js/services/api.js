@@ -34,6 +34,11 @@ const Api = {
         return j.files || [];
     },
 
+    treeFiles: async function(dir) {
+        var j = await this._post('/api/files/tree', { dir: dir });
+        return j.files || [];
+    },
+
     readFile: async function(dir, filename) {
         return await this._post('/api/files/read', { dir: dir, filename: filename });
     },

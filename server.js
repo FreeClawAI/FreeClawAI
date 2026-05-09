@@ -63,6 +63,26 @@ function listFiles(dir) {
     return result;
 }
 
+function listAllFiles(dir) {
+    var workDir = normalizeDir(dir);
+    if (!fs.existsSync(workDir)) return [];
+    var result = [];
+    function walk(d, prefix) {
+        var items;
+        try { items = fs.readdirSync(d, { withFileTypes: true }); } catch (e) { return; }
+        items.forEach(function(item) {
+            if (item.name.charAt(0) === '.') return;
+            if (item.isDirectory()) {
+                walk(path.join(d, item.name), prefix + item.name + '/');
+            } else {
+                result.push(prefix + item.name);
+            }
+        });
+    }
+    walk(workDir, '');
+    return result;
+}
+
 function readFileContent(dir, filename) {
     const fp = resolvePath(dir, filename);
     if (!fs.existsSync(fp)) throw new Error('File not found');
@@ -188,6 +208,11 @@ const server = http.createServer(function(req, res) {
             } else if (req.url === '/api/files/list' && req.method === 'POST') {
                 var dir = data.dir || '';
                 var files = listFiles(dir);
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ files: files }));
+            } else if (req.url === '/api/files/tree' && req.method === 'POST') {
+                var dir = data.dir || '';
+                var files = listAllFiles(dir);
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ files: files }));
             } else if (req.url === '/api/files/batch' && req.method === 'POST') {

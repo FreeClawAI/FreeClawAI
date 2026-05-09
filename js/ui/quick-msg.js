@@ -3,7 +3,6 @@ const QuickMsg = {
     _messages: [],
 
     show: async function() {
-        DialogStack.closeAll();
         await this._load();
         this._render();
     },
@@ -28,6 +27,11 @@ const QuickMsg = {
                 '</div>';
         });
 
+        listHtml += '<div class="ai-proto-item" id="aiFileListBtn" style="display:flex;align-items:center;padding:8px 10px;border-bottom:1px solid #eee;cursor:pointer;background:#e3f2fd">' +
+            '<span style="flex:1;font-size:13px">📁 ' + I18n.t('File List') + '</span>' +
+            '<span style="font-size:11px;color:#999;margin-right:8px">' + I18n.t('Click to send') + '</span>' +
+            '</div>';
+
         var body = '<div style="max-height:50vh;overflow:auto">' + listHtml + '</div>';
 
         DialogStack.show('quickmsg', {
@@ -44,9 +48,18 @@ const QuickMsg = {
                 document.querySelectorAll('.ai-proto-item').forEach(function(item) {
                     item.addEventListener('click', function(e) {
                         if (e.target.closest('button')) return;
+                        if (this.id === 'aiFileListBtn') {
+                            self._sendFileList();
+                            return;
+                        }
                         var m = self._messages[parseInt(this.dataset.idx)];
                         var ed = Sender._findEditor();
-                        if (ed) { ed.value = m.content; ed.dispatchEvent(new Event('input', { bubbles: true })); ed.focus(); }
+                        if (ed) {
+                            var old = ed.value;
+                            ed.value = old ? old + '\n\n' + m.content : m.content;
+                            ed.dispatchEvent(new Event('input', { bubbles: true }));
+                            ed.focus();
+                        }
                         DialogStack.close();
                     });
                 });
@@ -56,6 +69,34 @@ const QuickMsg = {
                 });
             }
         });
+    },
+
+    _sendFileList: async function() {
+        var dirs = Config.workDirs || [];
+        if (!dirs.length) {
+            Toast.show(I18n.t('No work directories configured'), 'error');
+            DialogStack.close();
+            return;
+        }
+
+        var mainDir = dirs[0];
+        var msg = '以下是我的项目文件列表：\n\n';
+
+        try {
+            var files = await Api.treeFiles(mainDir);
+            msg += files.map(function(name) { return '- ' + name; }).join('\n');
+
+            var editor = Sender._findEditor();
+            if (editor) {
+                var old = editor.value;
+                editor.value = old ? old + '\n\n' + msg : msg;
+                editor.dispatchEvent(new Event('input', { bubbles: true }));
+                editor.focus();
+            }
+        } catch (e) {
+            Toast.show(I18n.t('Cannot connect. Start node server.js'), 'error');
+        }
+        DialogStack.close();
     },
 
     _edit: function(idx) {

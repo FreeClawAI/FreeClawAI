@@ -63,6 +63,7 @@
     "matches": ["<all_urls>"]
   }],
   "action": {
-    "default_title": "FreeClaw - Code AI, Free Forever"
+    "default_title": "FreeClaw - Code AI, Free Forever",
+    "default_popup": "popup.html"
   }
 }

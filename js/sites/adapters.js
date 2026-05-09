@@ -5,16 +5,18 @@ const Sites = {
         extract: {
             container: '.ds-markdown .md-code-block',
             codeElement: 'pre',
-            getFilename(block) {
-                var container = block.closest('.ds-markdown');
-                if (!container) return null;
-                var allH2 = container.querySelectorAll('h2');
-                for (var k = allH2.length - 1; k >= 0; k--) {
-                    var h2 = allH2[k];
-                    var text = h2.textContent.trim();
-                    if (text && h2.compareDocumentPosition(block) & Node.DOCUMENT_POSITION_FOLLOWING) {
-                        return text;
+            getFilename: function(block) {
+                var el = block.previousElementSibling;
+                for (var j = 0; j < 10; j++) {
+                    if (!el) break;
+                    var text = (el.textContent || '').trim();
+                    var m = text.match(/([a-zA-Z0-9_\-\.\/]+\.\w{1,6})\s*$/);
+                    if (m && m[1].indexOf('.') > 0) {
+                        var ext = m[1].split('.').pop().toLowerCase();
+                        var validExts = ['cs','js','html','css','json','txt','py','java','ts','tsx','jsx','md','xml','yaml','yml','sql','sh','bat','cmd'];
+                        if (validExts.indexOf(ext) >= 0) return m[1];
                     }
+                    el = el.previousElementSibling;
                 }
                 return null;
             }
@@ -24,11 +26,8 @@ const Sites = {
             triggerInput: true
         },
         isTyping: function() {
-            var sendBtn = document.querySelector('[class*="send"] button') ||
-                           document.querySelector('button[aria-label*="发送"]') ||
-                           document.querySelector('[class*="stop"]');
-            if (!sendBtn) return false;
-            return sendBtn.offsetParent !== null;
+            var sendBtn = document.querySelector('[class*="send"] button') || document.querySelector('button[aria-label*="发送"]') || document.querySelector('[class*="stop"]');
+            return sendBtn && sendBtn.offsetParent !== null;
         }
     },
     'chat.openai.com': {
@@ -36,9 +35,17 @@ const Sites = {
         extract: {
             container: '[data-message-author-role="assistant"]',
             codeElement: 'pre',
-            getFilename(block) {
-                const header = block.querySelector('.text-xs, [class*="header"]');
-                return header ? header.textContent.trim() : null;
+            getFilename: function(block) {
+                var container = block.closest('[data-message-author-role="assistant"]');
+                if (!container) return null;
+                var text = container.textContent || '';
+                var m = text.match(/([a-zA-Z0-9_\-\.\/]+\.\w{1,6})\s*\n```/);
+                if (m && m[1].indexOf('.') > 0) {
+                    var ext = m[1].split('.').pop().toLowerCase();
+                    var validExts = ['cs','js','html','css','json','txt','py','java','ts','tsx','jsx','md','xml','yaml','yml','sql','sh','bat','cmd'];
+                    if (validExts.indexOf(ext) >= 0) return m[1];
+                }
+                return null;
             }
         },
         sender: {
@@ -55,9 +62,17 @@ const Sites = {
         extract: {
             container: '[data-message-author-role="assistant"]',
             codeElement: 'pre',
-            getFilename(block) {
-                const header = block.querySelector('.text-xs, [class*="header"]');
-                return header ? header.textContent.trim() : null;
+            getFilename: function(block) {
+                var container = block.closest('[data-message-author-role="assistant"]');
+                if (!container) return null;
+                var text = container.textContent || '';
+                var m = text.match(/([a-zA-Z0-9_\-\.\/]+\.\w{1,6})\s*\n```/);
+                if (m && m[1].indexOf('.') > 0) {
+                    var ext = m[1].split('.').pop().toLowerCase();
+                    var validExts = ['cs','js','html','css','json','txt','py','java','ts','tsx','jsx','md','xml','yaml','yml','sql','sh','bat','cmd'];
+                    if (validExts.indexOf(ext) >= 0) return m[1];
+                }
+                return null;
             }
         },
         sender: {
@@ -74,8 +89,10 @@ const Sites = {
         extract: {
             container: '.code-block__code',
             codeElement: null,
-            getFilename(block) {
-                const header = block.closest('.code-block')?.querySelector('.code-block__header');
+            getFilename: function(block) {
+                var cb = block.closest('.code-block');
+                if (!cb) return null;
+                var header = cb.querySelector('.code-block__header');
                 return header ? header.textContent.trim() : null;
             }
         },
@@ -90,8 +107,8 @@ const Sites = {
         extract: {
             container: 'pre.code-block',
             codeElement: null,
-            getFilename(block) {
-                const title = block.querySelector('.code-block-title');
+            getFilename: function(block) {
+                var title = block.querySelector('.code-block-title');
                 return title ? title.textContent.trim() : null;
             }
         },
