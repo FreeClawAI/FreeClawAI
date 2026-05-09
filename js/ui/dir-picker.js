@@ -11,7 +11,9 @@ var DirPicker = {
         var self = this;
         this._loadPaths().then(function() {
             self._render();
-            self._navigate(self._currentPath);
+            var navPath = self._currentPath || Config.mainDir;
+            if (!navPath || navPath === '__drives__') navPath = Config.mainDir;
+            self._navigate(navPath);
         });
     },
 
@@ -102,8 +104,11 @@ var DirPicker = {
 
     _navigate: async function(dir) {
         if (this._loading) return;
+        if (!dir || typeof dir !== 'string' || dir === '__drives__') {
+            if (dir === '__drives__') { this._loadDrives(); return; }
+            return;
+        }
         this._loading = true;
-        if (!dir || typeof dir !== 'string') { this._loading = false; return; }
         try {
             this._currentPath = dir.replace(/\\/g, '/');
             this._updatePathInput();
@@ -111,7 +116,6 @@ var DirPicker = {
             var list = document.getElementById('aiPickerList');
             if (!list) { this._loading = false; return; }
             list.innerHTML = '<div style="text-align:center;color:#999;padding:20px">' + I18n.t('Loading...') + '</div>';
-            if (dir === '__drives__') { this._loadDrives(); this._loading = false; return; }
             try {
                 var files = await Api.listFiles(dir);
                 var dirs = files.filter(function(f) { return f.isDir === true; });
@@ -119,6 +123,7 @@ var DirPicker = {
                 if (dirs.length === 0) {
                     html = '<div style="text-align:center;color:#999;padding:20px">' + I18n.t('No subfolders') + '</div>';
                 } else {
+                    var self = this;
                     dirs.forEach(function(d) {
                         var entryName = self._getDirName(d.fullPath || '');
                         html += '<div class="ai-picker-item" data-fullpath="' + Utils.escAttr(String(d.fullPath || '')) + '" style="padding:6px 8px;cursor:pointer;border-bottom:1px solid #f0f0f0">📁 ' + Utils.esc(entryName) + '</div>';

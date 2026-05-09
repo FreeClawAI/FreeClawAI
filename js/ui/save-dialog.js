@@ -202,28 +202,23 @@ const SaveDialog = {
                     btn.onclick = function(e) {
                         e.stopPropagation();
                         var idx = parseInt(btn.dataset.index);
-                        var on = fileItems[idx]._origName;
+                        var origName = fileItems[idx]._origName;
                         DirPicker.show(fileItems[idx].workDir, function(sd) {
                             var fw = findWorkDir(sd);
                             if (!fw) {
                                 Toast.show(I18n.t('Can only save to work directories'), 'error');
                                 return;
                             }
-                            var pn = Utils.getPureFileName(on);
-                            var fp = sd.replace(/\\/g, '/').replace(/\/$/, '') + '/' + pn;
-                            var rn = extractRelativeName(fp, fw);
+                            var fullPath = sd.replace(/\\/g, '/').replace(/\/$/, '') + '/' + Utils.getPureFileName(origName);
+                            var newName = extractRelativeName(fullPath, fw);
                             fileItems[idx].workDir = fw;
-                            fileItems[idx].savePath = fp;
-                            fileItems[idx].name = rn;
-                            var nd = formatDisplayPath(fw, rn);
-                            fileItems[idx].displayPath = nd;
+                            fileItems[idx].savePath = fullPath;
+                            fileItems[idx].name = newName;
+                            var nd = formatDisplayPath(fw, newName);
                             var row = document.querySelector('.ai-save-row[data-index="' + idx + '"]');
                             if (row) {
                                 var pe = row.querySelector('.ai-save-path');
                                 if (pe) pe.textContent = nd;
-                                var fc = row.querySelector('.ai-save-file-col');
-                                if (fc) fc.innerHTML = Utils.esc(nd);
-                                row.title = Utils.esc(rn) + '\n' + Utils.esc(fp);
                             }
                         });
                     };
