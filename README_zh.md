@@ -187,3 +187,114 @@ MIT License
 ---
 
 **写代码，不花 Token。**
+
+
+
+全部18个UI文件已收齐。现在我对整个插件有了完整理解。
+
+---
+
+## 完整总览
+
+```
+FreeClawAI (Chrome Extension MV3)
+│
+├── content.js          ← 入口：初始化顺序、事件绑定、心跳、Panel生命周期
+│
+├── js/core/            ← 基础层
+│   ├── utils.js        ← HTML转义、debounce、路径处理、内容标准化
+│   ├── md5.js          ← 纯JS MD5（文件校验）
+│   ├── db.js           ← IndexedDB：files/templates/state/quickMessages
+│   ├── config.js       ← chrome.storage.local：serverUrl、workDirs
+│   ├── i18n.js         ← 中英文自动切换 + 参数替换
+│   └── messages.js     ← FreeClaw协议中英文提示词模板
+│
+├── js/services/        ← 服务层
+│   ├── api.js          ← fetch封装，与 localhost:8080 通信
+│   ├── extractor.js    ← 从AI聊天DOM提取代码块（调用adapters）
+│   ├── file-service.js ← 文件树状态管理、AI/本地文件匹配、范围合并
+│   ├── sender.js       ← 将文件+提示词格式化写入AI输入框
+│   ├── formatter.js    ← js-beautify 代码格式化
+│   ├── quick-save.js   ← 💾 浮动按钮
+│   └── send-btn.js     ← ⚡ 浮动按钮
+│
+├── js/sites/           ← 平台适配
+│   └── adapters.js     ← DeepSeek/ChatGPT/Claude/Gemini 的DOM选择器
+│
+├── js/ui/              ← UI组件 (18个)
+│   ├── panel.js        ← 主面板HTML构建 + 打开/关闭
+│   ├── toast.js        ← Toast通知（2.5秒自动消失）
+│   ├── dialog.js       ← 对话框栈管理器（多层支持）
+│   ├── file-tree.js    ← 文件树渲染 + 懒加载子目录 + 右键菜单
+│   ├── editor.js       ← 用户文件编辑器 + 10秒自动保存
+│   ├── preview.js      ← 代码预览 + 行号 + 选区高亮
+│   ├── save-dialog.js  ← 保存确认对话框（含路径修改、差异对比入口）
+│   ├── diff-dialog.js  ← 左右分栏差异对比（支持更改保存路径）
+│   ├── send-dialog.js  ← 发送本地文件到AI（含目录树勾选）
+│   ├── settings-dialog.js ← 服务器URL、工作目录管理
+│   ├── context-menu.js ← 右键菜单（复制/下载/删除/格式化/重命名）
+│   ├── dir-picker.js   ← 文件夹选择器（快速访问/面包屑/驱动器）
+│   ├── quick-msg.js    ← 快捷消息对话框（文件列表/消息两Tab）
+│   ├── quick-file-tree.js ← 快速文件树（全选/层级勾选）
+│   ├── prompts-bar.js  ← 提示词快捷栏（从服务器/api/prompts/list加载）
+│   ├── templates-bar.js ← 用户模板栏（IndexedDB存储）
+│   ├── ai-sites-dialog.js ← AI页面设置（折叠代码块/折叠用户消息）
+│   └── code-folder.js  ← 代码块折叠功能
+│
+├── js/input/           ← 输入处理
+│   ├── keyboard.js     ← Ctrl+S/N/F, Escape 快捷键
+│   └── dnd.js          ← 拖放文件到面板
+│
+├── server.js           ← Node.js 本地文件服务器（零依赖，端口8080）
+├── panel.css           ← 所有UI样式
+├── popup.html          ← 插件弹出窗口（4个AI平台快捷入口）
+├── server.bat/sh       ← 启动脚本
+└── lib/                ← js-beautify, diff 库
+```
+
+## 数据流
+
+```
+AI对话页面 (DeepSeek/ChatGPT/Claude/Gemini)
+    │
+    ▼ adapters.js 定义DOM选择器
+Extractor.extract()  ← 解析 h2 + code block
+    │
+    ▼ {name, content}[]
+FileService.refresh()
+    ├── 加载本地工作目录树 (Api.listFiles / Api.treeFiles)
+    ├── Api.findFiles() 匹配AI文件↔本地文件
+    ├── 范围合并 (如 file.js [3,10])
+    └── 标记 unsavedAiFiles / userFiles
+    │
+    ▼
+FileTree.render()  ← 左侧文件树 (懒加载目录)
+    │
+    ├── 点击文件 → Api.readFile() → Preview.show() → Editor.startEdit()
+    ├── 双击AI文件 → DiffDialog.show() → 左右分栏差异对比
+    └── 右键 → 复制/下载/删除/格式化/重命名
+    │
+    ▼
+SaveDialog.show()  ← 💾 按钮 / Ctrl+S
+    ├── 显示文件列表 + 大小 + 保存路径
+    ├── 可更改每个文件的保存路径 (DirPicker)
+    ├── 可查看差异 (DiffDialog)
+    └── Api.writeFileRaw() → Toast通知
+    │
+    ▼
+Sender.send()  ← 📤 发送按钮 / Enter键
+    └── 格式化 FreeClaw协议 → 写入AI输入框 → 关闭面板
+```
+
+## 关键设计模式
+
+| 模式 | 实现 |
+|------|------|
+| **寄生模式** | 插件直接注入AI聊天页面DOM，使用页面输入框，0 API Token |
+| **FreeClaw协议** | `## path/file.ext` + ` ```code``` ` 标准化AI代码输出 |
+| **MD5冲突检测** | server端写入前校验MD5，冲突返回409让用户确认 |
+| **范围替换** | 支持 `## file.js [行号,行号]` 部分替换，与本地文件合并 |
+| **懒加载目录** | 文件树按需加载子目录，避免一次性请求大量数据 |
+| **对话框栈** | DialogStack支持多层对话框叠加，可回退 |
+| **自动保存** | 用户编辑的文件每10秒自动存入IndexedDB |
+| **双层存储** | chrome.storage.local（配置） + IndexedDB（文件/模板/状态） |
