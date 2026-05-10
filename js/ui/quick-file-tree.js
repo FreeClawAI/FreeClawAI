@@ -23,9 +23,9 @@ const QuickFileTree = {
                 var dn = dirs[d].split('\\').pop().split('/').pop() || dirs[d];
                 for (var i = 0; i < list.length; i++) {
                     this._allFiles.push({
-                        name: dn + '/' + list[i],
+                        name: list[i],
                         dir: dirs[d],
-                        dirName: dn,
+                        dirName: dirs[d].split('\\').pop().split('/').pop(),
                         selected: false
                     });
                 }
