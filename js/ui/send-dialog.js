@@ -33,18 +33,19 @@ const SendDialog = {
 
     _buildTree: async function() {
         var self = this;
-        var dirs = Config.workDirs || [];
         var container = document.getElementById('aiSendFileList');
         var html = '';
 
-        for (var i = 0; i < dirs.length; i++) {
-            var dir = dirs[i];
+        var dir = Config.mainDir;
+        if (dir) {
             await FileService.loadDir(dir);
             var node = FileService.getTree(dir);
-            if (!node) continue;
-            if (i === 0) node._expanded = true;
-            html += self._renderNode(dir, node, 0, true);
+            if (node) {
+                node._expanded = true;
+                html += self._renderNode(dir, node, 0, true);
+            }
         }
+
         container.innerHTML = html || '<div style="text-align:center;color:#999;padding:20px">No files</div>';
     },
 
@@ -232,7 +233,7 @@ const SendDialog = {
                 var r = await Api.readFile(dir, name);
                 var content = r.content || '';
                 total += content.length;
-                if (total > 100000) { Toast.show(I18n.t('send.overLimit', total, '100000'), 'error'); return; }
+                if (total > 100000) { Toast.show(I18n.t('Content exceeds limit ({0}/100000)', total), 'error'); return; }
                 msg += '## ' + name + '\n```\n' + content + '\n```\n\n';
             } catch (e) {}
         }

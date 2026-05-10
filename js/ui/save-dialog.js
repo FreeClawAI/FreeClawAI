@@ -83,6 +83,14 @@ const SaveDialog = {
         });
 
         var html = '';
+
+        // 工作目录选择栏
+        html += '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;margin-bottom:6px">';
+        html += '<span style="font-size:12px;color:#666;white-space:nowrap">' + I18n.t('Save to') + ':</span>';
+        html += '<span id="aiSaveWorkDir" style="flex:1;font-size:12px;background:white;padding:3px 8px;border:1px solid #ddd;border-radius:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + Utils.esc(Config.lastSaveDir || Config.mainDir) + '</span>';
+        html += '<button id="aiSaveChangeDir" style="padding:3px 8px;border:1px solid #ccc;border-radius:3px;background:white;cursor:pointer;font-size:12px">📁</button>';
+        html += '</div>';
+
         html += '<div style="display:flex;align-items:center;padding:6px 0;border-bottom:2px solid #ddd;font-size:12px;color:#666;font-weight:bold">';
         html += '<span style="width:28px"></span>';
         html += '<span style="flex:1">' + I18n.t('File') + '</span>';
@@ -117,6 +125,8 @@ const SaveDialog = {
         html += '</div>';
 
         var self = this;
+        var saveDir = Config.lastSaveDir || Config.mainDir;
+
         DialogStack.refresh('save', {
             title: I18n.t('Save Confirmation'),
             body: html,
@@ -135,6 +145,22 @@ const SaveDialog = {
                 var confirmBtn = document.getElementById('aiSaveConfirm');
                 var selectAll = document.getElementById('aiSaveSelectAll');
                 var countSpan = document.getElementById('aiSaveSelectedCount');
+
+                // 切换工作目录
+                var changeDirBtn = document.getElementById('aiSaveChangeDir');
+                var workDirLabel = document.getElementById('aiSaveWorkDir');
+                if (changeDirBtn) {
+                    changeDirBtn.onclick = function(e) {
+                        e.stopPropagation();
+                        DirPicker.show(Config.mainDir, function(selectedPath) {
+                            saveDir = selectedPath;
+                            if (workDirLabel) workDirLabel.textContent = selectedPath;
+                            Config.lastSaveDir = selectedPath;
+                            Config._data.workDirs = [selectedPath];
+                            Config.save();
+                        });
+                    };
+                }
 
                 if (cancelBtn) {
                     cancelBtn.onclick = function() { DialogStack.close(); };
@@ -232,9 +258,10 @@ const SaveDialog = {
                             var idx = parseInt(c.dataset.index);
                             var item = fileItems[idx];
                             var f = item.file;
-                            f._savePath = item.savePath;
-                            f._saveDir = item.workDir;
-                            f._newName = item.name;
+                            // 使用全局工作目录
+                            f._savePath = saveDir.replace(/\\/g, '/').replace(/\/$/, '') + '/' + item._origName;
+                            f._saveDir = saveDir;
+                            f._newName = item._origName;
                             f._origName = item._origName;
                             ts.push(f);
                         });
