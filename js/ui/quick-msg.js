@@ -1,9 +1,11 @@
 // FreeClaw - Quick message dialog
 const QuickMsg = {
     _messages: [],
+    _tab: 'file',
 
     show: async function() {
         await this._load();
+        this._tab = 'file';
         this._render();
     },
 
@@ -18,77 +20,78 @@ const QuickMsg = {
 
     _render: function() {
         var self = this;
-        var listHtml = '';
 
-        this._messages.forEach(function(m, i) {
-            listHtml += '<div class="ai-proto-item" data-idx="' + i + '" style="display:flex;align-items:center;padding:8px 10px;border-bottom:1px solid #eee;cursor:pointer">' +
-                '<span style="flex:1;font-size:13px">' + Utils.esc(m.title) + '</span>' +
-                '<span style="font-size:11px;color:#999;margin-right:8px">' + I18n.t('Click to send') + '</span>' +
-                '<button class="ai-proto-edit" data-idx="' + i + '" style="padding:3px 8px;border:1px solid #ccc;border-radius:3px;background:white;cursor:pointer;font-size:11px">' + I18n.t('Edit') + '</button>' +
-                '</div>';
-        });
+        var titleHtml = '';
+        titleHtml += '<div style="display:flex;align-items:center;gap:0">';
+        titleHtml += '<div id="aiTabFile" style="padding:8px 16px;cursor:pointer;font-size:13px;border-bottom:2px solid ' + (this._tab === 'file' ? '#007bff' : 'transparent') + ';color:' + (this._tab === 'file' ? '#007bff' : '#666') + '">📁 ' + I18n.t('File List') + '</div>';
+        titleHtml += '<div id="aiTabMsg" style="padding:8px 16px;cursor:pointer;font-size:13px;border-bottom:2px solid ' + (this._tab === 'msg' ? '#007bff' : 'transparent') + ';color:' + (this._tab === 'msg' ? '#007bff' : '#666') + '">📋 ' + I18n.t('Messages') + '</div>';
+        titleHtml += '</div>';
 
-        var body = '<div style="max-height:50vh;overflow:auto">' + listHtml + '</div>';
+        var body = '';
+        if (this._tab === 'file') {
+            body += '<div id="aiQuickFileTree" style="max-height:50vh;overflow:auto"><div style="text-align:center;color:#999;padding:20px">' + I18n.t('Loading...') + '</div></div>';
+        } else {
+            var listHtml = '';
+            this._messages.forEach(function(m, i) {
+                listHtml += '<div class="ai-proto-item" data-idx="' + i + '" style="display:flex;align-items:center;padding:8px 10px;border-bottom:1px solid #eee;cursor:pointer">' +
+                    '<span style="flex:1;font-size:13px">' + Utils.esc(m.title) + '</span>' +
+                    '<button class="ai-proto-edit" data-idx="' + i + '" style="padding:3px 8px;border:1px solid #ccc;border-radius:3px;background:white;cursor:pointer;font-size:11px">' + I18n.t('Edit') + '</button>' +
+                    '</div>';
+            });
+            body += '<div style="max-height:50vh;overflow:auto">' + listHtml + '</div>';
+        }
+
+        var buttons = [];
+        if (this._tab === 'file') {
+            buttons.push({ text: I18n.t('Send'), id: 'aiQuickSend', primary: true, onClick: function() { QuickFileTree.sendChecked(); } });
+        }
+        if (this._tab === 'msg') {
+            buttons.push({ text: I18n.t('+ New'), id: 'aiMsgAdd', onClick: function() { self._edit(-1); } });
+        }
+        buttons.push({ text: I18n.t('Close'), id: 'aiMsgClose', onClick: function() { DialogStack.close(); } });
 
         DialogStack.show('quickmsg', {
-            title: I18n.t('Quick Send'),
+            title: titleHtml,
             body: body,
-            buttons: [
-                { text: I18n.t('File List'), id: 'aiFileListBtn', onClick: function() { DialogStack.close(); self._sendFileList(); } },
-                { text: I18n.t('Settings'), id: 'aiSitesBtn', onClick: function() { DialogStack.closeAll(); AiSitesDialog.show(); } },
-                { text: I18n.t('+ New'), id: 'aiMsgAdd', onClick: function() { self._edit(-1); } },
-                { text: I18n.t('Close'), id: 'aiMsgClose', onClick: function() { DialogStack.close(); } }
-            ],
+            buttons: buttons,
             onRender: function() {
                 var c = document.getElementById('aiDialog');
-                if (c) { c.style.width = '500px'; c.style.maxWidth = '90%'; c.style.minHeight = '250px'; c.style.maxHeight = '80vh'; }
+                if (c) {
+                    c.style.width = '550px';
+                    c.style.maxWidth = '90%';
+                    c.style.minHeight = '350px';
+                    c.style.maxHeight = '80vh';
+                }
 
-                document.querySelectorAll('.ai-proto-item').forEach(function(item) {
-                    item.addEventListener('click', function(e) {
-                        if (e.target.closest('button')) return;
-                        var m = self._messages[parseInt(this.dataset.idx)];
-                        var ed = Sender._findEditor();
-                        if (ed) {
-                            var old = ed.value;
-                            ed.value = old ? old + '\n\n' + m.content : m.content;
-                            ed.dispatchEvent(new Event('input', { bubbles: true }));
-                            ed.focus();
-                        }
-                        DialogStack.close();
+                document.getElementById('aiTabFile').onclick = function() { self._tab = 'file'; self._render(); };
+                document.getElementById('aiTabMsg').onclick = function() { self._tab = 'msg'; self._render(); };
+
+                if (self._tab === 'file') {
+                    QuickFileTree.build('aiQuickFileTree');
+                } else {
+                    document.querySelectorAll('.ai-proto-item').forEach(function(item) {
+                        item.addEventListener('click', function(e) {
+                            if (e.target.closest('button')) return;
+                            var m = self._messages[parseInt(this.dataset.idx)];
+                            var ed = Sender._findEditor();
+                            if (ed) {
+                                var old = ed.value;
+                                ed.value = old ? old + '\n\n' + m.content : m.content;
+                                ed.dispatchEvent(new Event('input', { bubbles: true }));
+                                ed.focus();
+                            }
+                            DialogStack.close();
+                        });
                     });
-                });
-
-                document.querySelectorAll('.ai-proto-edit').forEach(function(btn) {
-                    btn.addEventListener('click', function(e) { e.stopPropagation(); self._edit(parseInt(this.dataset.idx)); });
-                });
+                    document.querySelectorAll('.ai-proto-edit').forEach(function(btn) {
+                        btn.addEventListener('click', function(e) {
+                            e.stopPropagation();
+                            self._edit(parseInt(this.dataset.idx));
+                        });
+                    });
+                }
             }
         });
-    },
-
-    _sendFileList: async function() {
-        var dirs = Config.workDirs || [];
-        if (!dirs.length) {
-            Toast.show(I18n.t('No work directories configured'), 'error');
-            return;
-        }
-
-        var mainDir = dirs[0];
-        var msg = '以下是我的项目文件列表：\n\n';
-
-        try {
-            var files = await Api.treeFiles(mainDir);
-            msg += files.map(function(name) { return '- ' + name; }).join('\n');
-
-            var editor = Sender._findEditor();
-            if (editor) {
-                var old = editor.value;
-                editor.value = old ? old + '\n\n' + msg : msg;
-                editor.dispatchEvent(new Event('input', { bubbles: true }));
-                editor.focus();
-            }
-        } catch (e) {
-            Toast.show(I18n.t('Cannot connect. Start node server.js'), 'error');
-        }
     },
 
     _edit: function(idx) {

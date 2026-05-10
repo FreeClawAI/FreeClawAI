@@ -54,6 +54,7 @@
       "js/ui/quick-msg.js",
       "js/ui/ai-sites-dialog.js",
       "js/ui/code-folder.js",
+      "js/ui/quick-file-tree.js",
       "js/input/keyboard.js",
       "js/input/dnd.js",
       "content.js"
