@@ -86,8 +86,8 @@ const SaveDialog = {
 
         // 工作目录选择栏
         html += '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;margin-bottom:6px">';
-        html += '<span style="font-size:12px;color:#666;white-space:nowrap">' + I18n.t('Save to') + ':</span>';
-        html += '<span id="aiSaveWorkDir" style="flex:1;font-size:12px;background:white;padding:3px 8px;border:1px solid #ddd;border-radius:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + Utils.esc(Config.lastSaveDir || Config.mainDir) + '</span>';
+        html += '<span style="font-size:12px;color:#666;white-space:nowrap">' + I18n.t('Work Directory') + ':</span>';
+        html += '<span id="aiSaveWorkDir" style="flex:1;font-size:12px;background:white;padding:3px 8px;border:1px solid #ddd;border-radius:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + Utils.esc(Config.mainDir) + '</span>';
         html += '<button id="aiSaveChangeDir" style="padding:3px 8px;border:1px solid #ccc;border-radius:3px;background:white;cursor:pointer;font-size:12px">📁</button>';
         html += '</div>';
 
