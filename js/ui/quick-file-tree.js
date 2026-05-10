@@ -35,7 +35,7 @@ const QuickFileTree = {
         var hasSaved = false;
         try {
             var state = await DB.getState();
-            if (state && state.selectedFiles) {
+            if (state && state.selectedFiles && state.workDir === Config.mainDir) {
                 hasSaved = true;
                 var saved = state.selectedFiles;
                 this._allFiles.forEach(function(f) {
@@ -82,39 +82,27 @@ const QuickFileTree = {
 
         function _calcStates(tree) {
             var keys = Object.keys(tree).filter(function(k) { return k !== '_files'; });
-            keys.forEach(function(k) {
-                _calcStates(tree[k]);
-            });
+            keys.forEach(function(k) { _calcStates(tree[k]); });
+
+            var hasTrue = false;
+            var hasFalse = false;
 
             if (tree._files) {
-                var hasTrue = false;
-                var hasFalse = false;
                 tree._files.forEach(function(f) {
                     if (f.selected) hasTrue = true;
                     else hasFalse = true;
                 });
-
-                keys.forEach(function(k) {
-                    if (tree[k]._state === 1) hasTrue = true;
-                    if (tree[k]._state === 0) hasFalse = true;
-                    if (tree[k]._state === 2) { hasTrue = true; hasFalse = true; }
-                });
-
-                if (hasTrue && hasFalse) tree._state = 2;
-                else if (hasTrue && !hasFalse) tree._state = 1;
-                else tree._state = 0;
-            } else {
-                var hasTrue = false;
-                var hasFalse = false;
-                keys.forEach(function(k) {
-                    if (tree[k]._state === 1) hasTrue = true;
-                    if (tree[k]._state === 0) hasFalse = true;
-                    if (tree[k]._state === 2) { hasTrue = true; hasFalse = true; }
-                });
-                if (hasTrue && hasFalse) tree._state = 2;
-                else if (hasTrue && !hasFalse) tree._state = 1;
-                else tree._state = 0;
             }
+
+            keys.forEach(function(k) {
+                if (tree[k]._state === 1) hasTrue = true;
+                if (tree[k]._state === 0) hasFalse = true;
+                if (tree[k]._state === 2) { hasTrue = true; hasFalse = true; }
+            });
+
+            if (hasTrue && hasFalse) tree._state = 2;
+            else if (hasTrue) tree._state = 1;
+            else tree._state = 0;
         }
 
         function _renderNode(folderName, children, depth, expanded) {
@@ -129,7 +117,6 @@ const QuickFileTree = {
                 '📁 ' + Utils.esc(displayName) + '</div>';
 
             html += '<div class="ai-qft-children" style="display:' + (expanded ? 'block' : 'none') + '">';
-
             var subKeys = Object.keys(children).filter(function(k) { return k !== '_files' && k !== '_state'; }).sort();
             subKeys.forEach(function(k) {
                 html += _renderNode(folderName + '/' + k, children[k], depth + 1, false);
@@ -155,8 +142,7 @@ const QuickFileTree = {
             container.querySelectorAll('.ai-qft-folder-cb').forEach(function(cb) {
                 var folderName = cb.closest('.ai-qft-folder').dataset.folder;
                 var prefix = folderName + '/';
-                var hasTrue = false;
-                var hasFalse = false;
+                var hasTrue = false, hasFalse = false;
                 for (var i = 0; i < self._allFiles.length; i++) {
                     if (self._allFiles[i].name.indexOf(prefix) === 0) {
                         if (self._allFiles[i].selected) hasTrue = true;
@@ -174,13 +160,8 @@ const QuickFileTree = {
                     var children = this.nextElementSibling;
                     var arrow = this.querySelector('.ai-qft-arrow');
                     if (!children || !arrow) return;
-                    if (children.style.display === 'none') {
-                        children.style.display = 'block';
-                        arrow.textContent = '▼';
-                    } else {
-                        children.style.display = 'none';
-                        arrow.textContent = '▶';
-                    }
+                    if (children.style.display === 'none') { children.style.display = 'block'; arrow.textContent = '▼'; }
+                    else { children.style.display = 'none'; arrow.textContent = '▶'; }
                 });
             });
 
@@ -189,9 +170,7 @@ const QuickFileTree = {
                     var folderName = cb.closest('.ai-qft-folder').dataset.folder;
                     var checked = cb.checked;
                     var prefix = folderName + '/';
-                    self._allFiles.forEach(function(f) {
-                        if (f.name.indexOf(prefix) === 0) f.selected = checked;
-                    });
+                    self._allFiles.forEach(function(f) { if (f.name.indexOf(prefix) === 0) f.selected = checked; });
                     var children = cb.closest('.ai-qft-folder').nextElementSibling;
                     if (children) {
                         children.querySelectorAll('.ai-qft-cb').forEach(function(c) { c.checked = checked; });
@@ -220,8 +199,7 @@ const QuickFileTree = {
                     var parentCb = parentEl.querySelector('.ai-qft-folder-cb');
                     if (parentCb) {
                         var prefix = parentName + '/';
-                        var hasTrue = false;
-                        var hasFalse = false;
+                        var hasTrue = false, hasFalse = false;
                         for (var i = 0; i < self._allFiles.length; i++) {
                             if (self._allFiles[i].name.indexOf(prefix) === 0) {
                                 if (self._allFiles[i].selected) hasTrue = true;
@@ -247,8 +225,8 @@ const QuickFileTree = {
     sendChecked: function() {
         var selected = this._allFiles.filter(function(f) { return f.selected; });
         if (!selected.length) { Toast.show(I18n.t('No files selected'), 'error'); return; }
-        var msg = '';
-        selected.forEach(function(f) { msg += '## ' + f.name + '\n```\n\n```\n\n'; });
+        var msg = '以下是我的项目文件列表，工作目录为 ' + Config.mainDir + '：\n\n';
+        selected.forEach(function(f) { msg += '- ' + f.name + '\n'; });
         var editor = Sender._findEditor();
         if (editor) {
             var old = editor.value;
