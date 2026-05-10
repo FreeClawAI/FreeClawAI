@@ -17,9 +17,7 @@ if (!fs.existsSync(WORKSPACE_DIR)) fs.mkdirSync(WORKSPACE_DIR, { recursive: true
 function resolvePath(dir, filename) {
     const workDir = dir ? path.resolve(dir) : WORKSPACE_DIR;
     const full = path.resolve(workDir, filename || '');
-    if (process.platform === 'win32') {
-        if (!full.startsWith(workDir)) throw new Error('Access denied');
-    }
+    if (!full.startsWith(workDir + path.sep) && full !== workDir) throw new Error('Access denied');
     return full;
 }
 
@@ -106,7 +104,7 @@ function writeFile(dir, filename, content, options) {
 function makeDir(dir, name) {
     const workDir = dir ? path.resolve(dir) : WORKSPACE_DIR;
     const full = path.resolve(workDir, name);
-    if (!full.startsWith(workDir)) throw new Error('Access denied');
+    if (!full.startsWith(workDir + path.sep) && full !== workDir) throw new Error('Access denied');
     if (!fs.existsSync(full)) fs.mkdirSync(full, { recursive: true });
     return { success: true };
 }

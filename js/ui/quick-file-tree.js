@@ -25,7 +25,7 @@ const QuickFileTree = {
                     this._allFiles.push({
                         name: list[i],
                         dir: dirs[d],
-                        dirName: dirs[d].split('\\').pop().split('/').pop(),
+                        dirName: dn,
                         selected: false
                     });
                 }
@@ -216,10 +216,10 @@ const QuickFileTree = {
         }
     },
 
-    _save: function() {
+    _save: async function() {
         var data = {};
         this._allFiles.forEach(function(f) { data[f.name] = f.selected; });
-        DB.saveState({ selectedFiles: data, workDir: Config.mainDir });
+        await DB.saveState({ selectedFiles: data, workDir: Config.mainDir });
     },
 
     sendChecked: function() {

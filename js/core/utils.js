@@ -11,7 +11,7 @@ const Utils = {
         return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     },
     countChars(s) { return (s || '').length; },
-    generateId() { return Date.now().toString(36) + Math.random().toString(36).substr(2, 6); },
+    generateId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); },
     debounce(fn, delay) {
         let timer;
         return function(...args) { clearTimeout(timer); timer = setTimeout(() => fn.apply(this, args), delay); };
