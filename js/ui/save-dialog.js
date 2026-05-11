@@ -125,7 +125,7 @@ const SaveDialog = {
         html += '</div>';
 
         var self = this;
-        var saveDir = Config.lastSaveDir || Config.mainDir;
+        var saveDir = Config.mainDir;
 
         DialogStack.refresh('save', {
             title: I18n.t('Save Confirmation'),
